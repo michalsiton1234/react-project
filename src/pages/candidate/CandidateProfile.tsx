@@ -15,6 +15,7 @@ const LEVELS = [
   { value: "hard", label: "קשה", emoji: "🔥", desc: "מקצועי" },
 ];
 
+
 export default function CandidateProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
