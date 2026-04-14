@@ -6,9 +6,9 @@ import { Briefcase, MapPin, DollarSign, Sparkles, Send, CheckCircle, User as Use
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 // ייבוא מודלים
-import { JobListing } from "@/models/JobListing";
+import type { JobListing } from "@/models/JobListing";
 import type { CandidateProfile } from "@/models/CandidateProfile";
-import { Match } from "@/models/Match";
+import type  { Match } from "@/models/Match";
 
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
 

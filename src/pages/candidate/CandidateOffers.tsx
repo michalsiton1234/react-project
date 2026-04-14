@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { api } from "@/api/apiClient"; // החלפנו את base44 ב-Axios שלך
-import { Match } from "@/models/Match"; // המודל שבנינו
+import type { Match } from "@/models/Match"; // המודל שבנינו
 import { motion } from "framer-motion";
 import { Briefcase, MapPin, DollarSign, CheckCircle, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";

@@ -10,8 +10,8 @@ import { toast } from "sonner";
 // ייבוא מודלים
 
 import type{ CandidateProfile } from "../models/CandidateProfile";
-import { JobListing } from "@/models/JobListing";
-import { Match } from "@/models/Match";
+import type { JobListing } from "@/models/JobListing";
+import type { Match } from "@/models/Match";
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
 
 export default function Admin() {

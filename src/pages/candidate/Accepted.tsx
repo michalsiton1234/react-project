@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { api } from '@/api/apiClient'; // ה-Axios שיצרנו בתמונה
-import { JobListing } from '@/models/JobListing'; // המודל הקצר שבנינו
+import type { JobListing } from '@/models/JobListing'; // המודל הקצר שבנינו
 
 const JobsPage = () => {
   // 1. ניהול הסטייט (מצב) של העמוד

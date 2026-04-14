@@ -7,7 +7,7 @@ import { User, Mail, MapPin, CheckCircle, Briefcase, Star, ArrowLeft, Zap } from
 
 // ייבוא הטיפוסים שבנינו
 import type{ CandidateProfile } from "@/models/CandidateProfile";
-import { Match } from "@/models/Match";
+import type { Match } from "@/models/Match";
 
 // טיפוס למשתמש (אפשר להוסיף לקובץ המודלים בהמשך)
 interface UserData {

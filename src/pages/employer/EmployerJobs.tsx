@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 // ייבוא המודלים (ודא שיצרת אותם בתיקיית models)
-import { JobListing } from "@/models/JobListing";
+import type { JobListing } from "@/models/JobListing";
 
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
 const STATUS_LABELS = { open: "פתוחה", closed: "סגורה", filled: "אוישה" };
