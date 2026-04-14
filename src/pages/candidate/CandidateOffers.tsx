@@ -21,7 +21,7 @@ export default function CandidateOffers() {
   const loadOffers = async () => {
     try {
       // בסישארפ שלך - ה-API צריך להחזיר רק את ההצעות של המשתמש המחובר
-      const response = await api.get('/matches/my-offers'); 
+      const response = await api.get('/matches/my-offers');
       setMatches(response.data);
     } catch (error) {
       toast({ title: "שגיאה בטעינת הצעות", variant: "destructive" });
@@ -34,15 +34,16 @@ export default function CandidateOffers() {
     try {
       // עדכון הסטטוס ב-C# (למשל נתיב: api/matches/123/status)
       await api.patch(`/matches/${matchId}/status`, { status });
-      
-      toast({ 
-        title: status === "accepted" ? "🎉 קיבלת את ההצעה!" : "ההצעה נדחתה" 
+
+      toast({
+        title: status === "accepted" ? "🎉 קיבלת את ההצעה!" : "ההצעה נדחתה"
       });
       loadOffers(); // רענון הרשימה
     } catch (error) {
       toast({ title: "העדכון נכשל", variant: "destructive" });
     }
 
-};}
+  };
+}
 
-  // ... (כל שאר ה-JSX של ה-Return נשאר בדיוק אותו דבר!)
+// ... (כל שאר ה-JSX של ה-Return נשאר בדיוק אותו דבר!)

@@ -1,8 +1,6 @@
-// @ts-nocheck
 import axios from 'axios';
 
-// כאן את שמה את הכתובת של שרת ה-C# שלך (למשל http://localhost:5000)
-const BASE_URL = 'https://localhost:7165/api'; // תשני לפורט הנכון של ה-Visual Studio שלך
+const BASE_URL = 'https://localhost:7165/api';
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -11,11 +9,29 @@ export const api = axios.create({
   },
 });
 
-// הוספת Interceptor לטיפול בשגיאות או הוספת טוקן (אופציונלי)
+// Request interceptor (token)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+
   if (token) {
+    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
+
+// Response interceptor (errors)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("API Error:", error);
+
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+
+    return Promise.reject(error);
+  }
+);
