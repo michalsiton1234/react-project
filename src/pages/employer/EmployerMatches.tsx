@@ -4,11 +4,10 @@ import { api } from "@/api/apiClient";
 import { motion } from "framer-motion";
 import { Briefcase, MapPin, DollarSign, Sparkles, Send, CheckCircle, User as UserIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "sonner";
 // ייבוא מודלים
 import { JobListing } from "@/models/JobListing";
-import { CandidateProfile } from "@/models/CandidateProfile";
+import type { CandidateProfile } from "@/models/CandidateProfile";
 import { Match } from "@/models/Match";
 
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
@@ -64,7 +63,7 @@ export default function EmployerMatches() {
         job_id: job.id,
         candidate_id: candidate.id
       });
-      
+
       toast({ title: "ההצעה נשלחה בהצלחה! 📧" });
       loadData(); // רענון הנתונים
     } catch (error) {
@@ -78,8 +77,8 @@ export default function EmployerMatches() {
     </div>
   );
 
-  const filteredJobs = selectedJobId === "all" 
-    ? jobs.filter(j => j.status === "open") 
+  const filteredJobs = selectedJobId === "all"
+    ? jobs.filter(j => j.status === "open")
     : jobs.filter(j => j.id === selectedJobId);
 
   return (

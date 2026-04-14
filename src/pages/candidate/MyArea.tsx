@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { User, Mail, MapPin, CheckCircle, Briefcase, Star, ArrowLeft, Zap } from "lucide-react";
 
 // ייבוא הטיפוסים שבנינו
-import { CandidateProfile } from "@/models/CandidateProfile";
+import type{ CandidateProfile } from "@/models/CandidateProfile";
 import { Match } from "@/models/Match";
 
 // טיפוס למשתמש (אפשר להוסיף לקובץ המודלים בהמשך)

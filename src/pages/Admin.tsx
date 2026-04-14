@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 // ייבוא מודלים
 
-import { CandidateProfile } from "../models/CandidateProfile";
+import type{ CandidateProfile } from "../models/CandidateProfile";
 import { JobListing } from "@/models/JobListing";
 import { Match } from "@/models/Match";
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
