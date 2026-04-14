@@ -1,14 +1,13 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { api } from "@/api/apiClient"; // ה-Axios שלך
-import { CandidateProfile as CandidateProfileType } from "@/models/CandidateProfile"; // המודל שבנינו
+import type { CandidateProfile as CandidateProfileType } from "@/models/CandidateProfile"; // המודל שבנינו
 import { motion } from "framer-motion";
 import { MapPin, DollarSign, Zap, Globe, Users, Save, CheckCircle2, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "sonner";
 const LEVELS = [
   { value: "easy", label: "קלה", emoji: "😊", desc: "מתאים לכולם" },
   { value: "medium", label: "בינונית", emoji: "💪", desc: "דורש ניסיון" },
@@ -20,12 +19,12 @@ export default function CandidateProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    city: "", 
-    max_distance: 10, 
+    city: "",
+    max_distance: 10,
     min_hourly_rate: 30,
-    activity: true, 
-    level: "easy", 
-    is_remote_only: false, 
+    activity: true,
+    level: "easy",
+    is_remote_only: false,
     with_people: true,
   });
 
@@ -69,5 +68,10 @@ export default function CandidateProfile() {
       setSaving(false);
     }
   };
+  return (
+    <div>
+      {/* כאן את מדביקה את כל ה-JSX של העמוד */}
+    </div>
+  );
 }
-  // ... (ה-JSX של ה-Return נשאר זהה למה ששלחת, הוא מעולה!)
+// ... (ה-JSX של ה-Return נשאר זהה למה ששלחת, הוא מעולה!)

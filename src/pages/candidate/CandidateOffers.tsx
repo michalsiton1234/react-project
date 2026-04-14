@@ -4,8 +4,7 @@ import { api } from "@/api/apiClient"; // החלפנו את base44 ב-Axios של
 import { Match } from "@/models/Match"; // המודל שבנינו
 import { motion } from "framer-motion";
 import { Briefcase, MapPin, DollarSign, CheckCircle, XCircle, Clock } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "sonner";
 
 const statusConfig = {
   pending: { label: "ממתין", bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20", icon: Clock },

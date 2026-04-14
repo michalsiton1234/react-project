@@ -9,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/sonner";
-
+import { toast } from "sonner";
 // ייבוא המודלים (ודא שיצרת אותם בתיקיית models)
 import { JobListing } from "@/models/JobListing";
 
