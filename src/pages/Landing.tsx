@@ -1,10 +1,9 @@
-// @ts-nocheck
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Briefcase, ArrowLeft, Sparkles, Clock, Shield, Star, ChevronDown } from "lucide-react";
+import { Briefcase, ArrowLeft, Sparkles, Clock, Shield, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { api } from "@/api/apiClient";
+import { getUser, getUserRole } from "@/lib/auth"; // ייבוא הפונקציות החדשות
 
 const jobTypes = [
   { icon: "👶", label: "בייביסיטר", color: "from-pink-400 to-rose-500" },
@@ -17,13 +16,6 @@ const jobTypes = [
   { icon: "📦", label: "סידורים", color: "from-teal-400 to-cyan-500" },
 ];
 
-const stats = [
-  { num: "500+", label: "משרות פעילות" },
-  { num: "1,200+", label: "מועמדים" },
-  { num: "300+", label: "מעסיקים" },
-  { num: "95%", label: "שביעות רצון" },
-];
-
 const features = [
   { icon: Sparkles, title: "התאמה חכמה", desc: "אלגוריתם חכם שמתאים בין מועמדים למשרות לפי העדפות, מיקום ושכר", gradient: "from-violet-500 to-purple-600" },
   { icon: Clock, title: "גמישות מלאה", desc: "בחרו את השעות שמתאימות לכם - בוקר, צהריים, ערב, סוף שבוע", gradient: "from-blue-500 to-cyan-600" },
@@ -32,33 +24,24 @@ const features = [
 
 export default function Landing() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // בדיקה אם המשתמש מחובר דרך ה-Backend החדש
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      try {
-        const res = await api.get('/auth/me'); // Endpoint בסישארפ שיחזיר את המשתמש הנוכחי
-        setUser(res.data);
-        setIsLoggedIn(true);
-      } catch (err) {
-        setIsLoggedIn(false);
-        localStorage.removeItem('token');
-      }
-    };
-    checkAuth();
+    // בדיקה מהירה של ה-Auth מקומית דרך הטוקן
+    const user = getUser();
+    if (user) {
+      setIsLoggedIn(true);
+    }
   }, []);
 
   const getDashboardLink = () => {
-    if (!user) return "/login";
-    // התאמה לתפקידים ב-Backend שלך
-    if (user.role === "Admin") return "/admin";
-    if (user.userType === "Employer") return "/employer/jobs";
-    return "/candidate/profile";
+    const role = getUserRole(); // שימוש בטיפוסים שהגדרנו ב-auth.ts
+    
+    if (role === "admin") return "/admin";
+    if (role === "employer") return "/employer/jobs";
+    if (role === "candidate") return "/candidate/profile";
+    
+    return "/login";
   };
 
   const handleCTA = () => {
@@ -84,7 +67,7 @@ export default function Landing() {
             {isLoggedIn ? (
               <Link to={getDashboardLink()}>
                 <Button className="rounded-full px-5 h-9 text-sm bg-cyan-500 hover:bg-cyan-400 text-black font-semibold gap-1.5 transition-all duration-300">
-                  כניסה למערכת <ArrowLeft className="w-3.5 h-3.5" />
+                  ללוח הבקרה שלי <ArrowLeft className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             ) : (
@@ -92,7 +75,7 @@ export default function Landing() {
                 <Link to="/login" className="text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5">
                   התחברות
                 </Link>
-                <Link to="/register" className="text-sm bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-full px-4 py-1.5 transition-all">
+                <Link to="/setup" className="text-sm bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-full px-4 py-1.5 transition-all">
                   הרשמה
                 </Link>
               </>
@@ -103,7 +86,6 @@ export default function Landing() {
 
       {/* HERO SECTION */}
       <section className="relative min-h-screen flex flex-col items-center justify-center pt-16 px-6 text-center">
-        {/* Ambient background glows */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-1/4 right-1/3 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px]" />
           <div className="absolute bottom-1/3 left-1/4 w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px]" />

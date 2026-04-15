@@ -1,41 +1,56 @@
-// @ts-nocheck
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api/apiClient";
 import { motion } from "framer-motion";
 import { Briefcase, Users, ArrowLeft, Sparkles } from "lucide-react";
-import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner"; // שימוש ב-Sonner כפי שמופיע ב-Imports שלך
+import { saveToken } from "@/lib/auth";
 
 export default function Setup() {
   const [selectedType, setSelectedType] = useState<"Candidate" | "Employer" | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // משתנים חדשים שנוספו כדי לתמוך בפונקציית הרישום
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    if (!selectedType) return;
+    if (!selectedType) {
+      toast.error("אנא בחר סוג חשבון");
+      return;
+    }
     
     setLoading(true);
     try {
-      // בסישארפ: עדכון סוג המשתמש וסימון שהפרופיל עדיין לא הושלם
-      await api.post("/auth/setup-role", { 
-        role: selectedType,
-        isProfileComplete: false 
+      // 1. קביעת ה-Endpoint לפי הפורמט שביקשו ממך (lower case)
+      const rolePath = selectedType.toLowerCase();
+      const endpoint = `/User/register/${rolePath}`;
+
+      // 2. ביצוע הקריאה לשרת - העברת סיסמה ב-URL ושאר הנתונים ב-Body
+      // שימוש ב-api (Axios) במקום fetch כדי לשמור על עקביות
+      const res = await api.post(`${endpoint}?password=${password}`, {
+        email,
+        fullName
       });
 
-      toast({ title: "הגדרות נשמרו בהצלחה" });
+      // 3. שמירת הטוקן (השרת מחזיר string של הטוקן)
+      const token = res.data;
+      saveToken(token);
 
-      // ניתוב לדף המתאים לפי הבחירה
+      toast.success("נרשמת בהצלחה! ✨");
+
+      // 4. ניתוב לדף המתאים
       if (selectedType === "Candidate") {
         navigate("/candidate/profile");
       } else {
         navigate("/employer/jobs");
       }
-    } catch (error) {
-      toast({ 
-        title: "שגיאה בשמירת הנתונים", 
-        description: "נסה שנית מאוחר יותר",
-        variant: "destructive" 
-      });
+    } catch (error: any) {
+      console.error("שגיאה ברישום:", error);
+      toast.error(error.response?.data || "ההרשמה נכשלה, נסה שנית");
     } finally {
       setLoading(false);
     }
@@ -69,6 +84,25 @@ export default function Setup() {
           <p className="text-white/40 text-sm">הבחירה תעזור לנו להתאים עבורכם את החוויה</p>
         </div>
 
+        {/* --- חדש: שדות קלט לרישום --- */}
+        <div className="space-y-4 mb-8">
+          <input 
+            type="text" placeholder="שם מלא" value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+          />
+          <input 
+            type="email" placeholder="אימייל" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+          />
+          <input 
+            type="password" placeholder="סיסמה" value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+          />
+        </div>
+
         {/* Options Grid */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           {[
@@ -79,7 +113,7 @@ export default function Setup() {
               key={id}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => setSelectedType(id)}
+              onClick={() => setSelectedType(id as any)}
               className={`relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden group ${
                 selectedType === id
                   ? "border-cyan-500 bg-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
@@ -102,9 +136,9 @@ export default function Setup() {
           whileHover={selectedType ? { scale: 1.02 } : {}}
           whileTap={selectedType ? { scale: 0.98 } : {}}
           onClick={handleSubmit}
-          disabled={!selectedType || loading}
+          disabled={!selectedType || loading || !email || !password}
           className={`w-full relative py-4 rounded-2xl text-base font-bold transition-all duration-300 ${
-            selectedType 
+            selectedType && email && password
               ? "opacity-100 shadow-lg shadow-cyan-500/20 cursor-pointer" 
               : "opacity-30 cursor-not-allowed filter grayscale"
           }`}
