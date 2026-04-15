@@ -23,7 +23,7 @@ export interface Match {
   status?: string;          // למשל: 'pending', 'approved'
 }
 
-export const matchAPI = {
+export const matchApi = {
   // 1. קבלת כל ההתאמות - [HttpGet]
   getAll: async () => {
     const response = await api.get<Match[]>("/Match");

@@ -1,14 +1,31 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./authSlice";
-import matchReducer from "./matchSlice";
+import { createSlice,type PayloadAction } from "@reduxjs/toolkit";
 
-export const store = configureStore({
-  reducer: {
-    auth: authReducer,
-    matches: matchReducer,
+interface AuthState {
+  user: any | null;
+  token: string | null;
+}
+
+const initialState: AuthState = {
+  user: null,
+  token: localStorage.getItem("token"),
+};
+
+const authSlice = createSlice({
+  name: "auth",
+  initialState,
+  reducers: {
+    setCredentials: (state, action: PayloadAction<{ user: any; token: string }>) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      localStorage.setItem("token", action.payload.token);
+    },
+    logout: (state) => {
+      state.user = null;
+      state.token = null;
+      localStorage.removeItem("token");
+    },
   },
 });
 
-// טיפוסים לשימוש ב־TS
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export const { setCredentials, logout } = authSlice.actions;
+export default authSlice.reducer; // הנה ה-Default Export שכולם חיפשו!

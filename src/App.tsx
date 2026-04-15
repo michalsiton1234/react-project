@@ -38,7 +38,8 @@ const AuthenticatedApp = () => {
       {/* נתיבים ציבוריים */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* <Route path="/register" element={<Register />} /> */}
+      <Route path="/register" element={<Setup />} />
 
       {/* נתיב Setup - הגנה בסיסית */}
       <Route 
@@ -48,6 +49,8 @@ const AuthenticatedApp = () => {
 
       {/* נתיבים מוגנים עם Layout */}
       <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
+
+   
         
         {/* נתיבי מועמד */}
         <Route path="/candidate/profile" element={<CandidateProfile />} />

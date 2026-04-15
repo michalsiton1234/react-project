@@ -1,34 +1,31 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { matchApi } from "@/api/matchApi";
-import type { Match } from "@/models/Match";
+import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { matchApi, type Match } from "@/api/matchApi";
 
 interface MatchState {
-  matches: Match[];
+  items: Match[];
   loading: boolean;
+  error: string | null;
 }
 
 const initialState: MatchState = {
-  matches: [],
+  items: [],
   loading: false,
+  error: null,
 };
 
-// שליפה מהשרת
-export const fetchMatches = createAsyncThunk(
-  "matches/fetch",
-  async () => {
-    return await matchApi.getMyOffers();
-  }
-);
+// פעולה אסינכרונית להבאת כל ההתאמות
+// במקום getMyOffers, השתמשי ב-getAll
+export const fetchMatches = createAsyncThunk("matches/fetchAll", async () => {
+  return await matchApi.getAll(); 
+});
 
-// עדכון סטטוס
+// במקום updateStatus, השתמשי ב-update
 export const updateMatchStatus = createAsyncThunk(
-  "matches/update",
-  async ({ id, status }: { id: string; status: string }) => {
-    await matchApi.updateStatus(id, status);
-    return { id, status };
+  "matches/updateStatus",
+  async ({ id, matchData }: { id: number; matchData: Match }) => {
+    return await matchApi.update(id, matchData); 
   }
 );
-
 const matchSlice = createSlice({
   name: "matches",
   initialState,
@@ -38,15 +35,13 @@ const matchSlice = createSlice({
       .addCase(fetchMatches.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchMatches.fulfilled, (state, action) => {
-        state.matches = action.payload;
+      .addCase(fetchMatches.fulfilled, (state, action: PayloadAction<Match[]>) => {
         state.loading = false;
+        state.items = action.payload;
       })
-      .addCase(updateMatchStatus.fulfilled, (state, action) => {
-        const match = state.matches.find(m => m.job_id === action.payload.id);
-        if (match) {
-          match.status = action.payload.status as any;
-        }
+      .addCase(fetchMatches.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch matches";
       });
   },
 });

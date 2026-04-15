@@ -117,7 +117,7 @@ export default function Login() {
 
         <p className="text-center mt-8 text-sm text-white/40">
           עדיין אין לכם חשבון?{" "}
-          <Link to="/setup" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-medium transition-colors">הרשמו עכשיו</Link>
+          <Link to="/register" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-medium transition-colors">הרשמו עכשיו</Link>
         </p>
       </motion.div>
     </div>
