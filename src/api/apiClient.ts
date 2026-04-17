@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://localhost:7198/api';
+
+const BASE_URL = 'http://localhost:5035/api';
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -25,6 +26,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    debugger;
     console.error("API Error:", error);
 
     if (error.response?.status === 401) {

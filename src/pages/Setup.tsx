@@ -49,8 +49,23 @@ export default function Setup() {
         navigate("/employer/jobs");
       }
     } catch (error: any) {
-      console.error("שגיאה ברישום:", error);
-      toast.error(error.response?.data || "ההרשמה נכשלה, נסה שנית");
+    console.error("שגיאה ברישום:", error);
+    
+    // 1. נחלץ הודעה בצורה בטוחה
+    let message = "ההרשמה נכשלה, נסה שנית";
+    
+    if (error.response?.data) {
+        // אם השרת שלח אובייקט, ניקח רק את ה-title שלו
+        if (typeof error.response.data === 'object') {
+            message = error.response.data.title || JSON.stringify(error.response.data);
+        } else {
+            message = error.response.data;
+        }
+    }
+
+    // 2. נציג רק את המחרוזת
+    toast.error(String(message)); 
+
     } finally {
       setLoading(false);
     }

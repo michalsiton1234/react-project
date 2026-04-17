@@ -47,7 +47,7 @@ const AuthenticatedApp = () => {
         element={isAuthenticated ? <Setup /> : <Navigate to="/login" />} 
       />
 
-      {/* נתיבים מוגנים עם Layout */}
+      נתיבים מוגנים עם Layout
       <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
 
    
