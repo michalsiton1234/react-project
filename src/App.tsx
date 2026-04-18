@@ -1,8 +1,6 @@
-// @ts-nocheck
-
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClientInstance } from '@/lib/query-client'
+import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { Toaster } from "@/components/ui/sonner";
@@ -11,8 +9,7 @@ import Layout from './components/Layout';
 // Pages
 import Landing from './pages/Landing';
 import Setup from './pages/Setup';
-import Login from './pages/Login'; // דף חדש שנצטרך
-import Register from './pages/Register'; // דף חדש שנצטרך
+import Login from './pages/Login';
 import CandidateProfile from './pages/candidate/CandidateProfile';
 import CandidateOffers from './pages/candidate/CandidateOffers';
 import MyArea from './pages/candidate/MyArea';
@@ -22,9 +19,12 @@ import EmployerMatches from './pages/employer/EmployerMatches';
 import Admin from './pages/Admin';
 
 const AuthenticatedApp = () => {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  // --- התיקון כאן: משתמשים במידע האמיתי מה-AuthContext ---
+  const { isLoading, isAuthenticated } = useAuth();
 
-  // בזמן בדיקת ה-Token מול השרת בסישארפ
+  // הדפסה לבדיקה ב-Console
+  console.log("Current Auth Status:", { isAuthenticated, isLoading });
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-[#080C14] flex items-center justify-center">
@@ -37,32 +37,33 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* נתיבים ציבוריים */}
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      {/* <Route path="/register" element={<Register />} /> */}
       <Route path="/register" element={<Setup />} />
-
-      {/* נתיב Setup - הגנה בסיסית */}
+      
+      {/* לוגין: אם כבר מחוברת - מעביר אוטומטית למשרות. אם לא - מציג לוגין */}
       <Route 
-        path="/setup" 
-        element={isAuthenticated ? <Setup /> : <Navigate to="/login" />} 
+        path="/login" 
+        element={!isAuthenticated ? <Login /> : <Navigate to="/employer/jobs" replace />} 
       />
 
-      נתיבים מוגנים עם Layout
-      <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
+      {/* נתיב Setup מוגן */}
+      <Route 
+        path="/setup" 
+        element={isAuthenticated ? <Setup /> : <Navigate to="/login" replace />} 
+      />
 
-   
-        
+      {/* --- נתיבים מוגנים (עטופים ב-Layout) --- */}
+      <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
+        {/* נתיבי מעסיק */}
+        <Route path="/employer/jobs" element={<EmployerJobs />} />
+        <Route path="/employer/matches" element={<EmployerMatches />} />
+
         {/* נתיבי מועמד */}
         <Route path="/candidate/profile" element={<CandidateProfile />} />
         <Route path="/candidate/offers" element={<CandidateOffers />} />
         <Route path="/candidate/my-area" element={<MyArea />} />
         <Route path="/candidate/accepted" element={<Accepted />} />
 
-        {/* נתיבי מעסיק */}
-        <Route path="/employer/jobs" element={<EmployerJobs />} />
-        <Route path="/employer/matches" element={<EmployerMatches />} />
-
-        {/* נתיב מנהל - אפשר להוסיף בדיקה ש-user.role === 'Admin' */}
+        {/* נתיב מנהל */}
         <Route path="/admin" element={<Admin />} />
       </Route>
 
@@ -78,7 +79,7 @@ function App() {
       <AuthProvider>
         <Router>
           <AuthenticatedApp />
-          <Toaster />
+          <Toaster position="top-center" richColors closeButton />
         </Router>
       </AuthProvider>
     </QueryClientProvider>

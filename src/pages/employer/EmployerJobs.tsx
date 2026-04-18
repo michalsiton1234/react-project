@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { api } from "@/api/apiClient"; // ה-Axios שלך
+import { api } from "@/api/apiClient"; 
 import { motion } from "framer-motion";
 import { Plus, Briefcase, MapPin, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-// ייבוא המודלים (ודא שיצרת אותם בתיקיית models)
+import { getUserId } from "@/lib/auth"; // וודאי שהפונקציה הזו קיימת ב-auth.ts כפי שסיכמנו
 import type { JobListing } from "@/models/JobListing";
 
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
@@ -32,54 +32,67 @@ export default function EmployerJobs() {
     level: "easy", is_remote: false, with_people: false, status: "open" 
   });
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadData(); 
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      // בסישארפ: נתיב שמחזיר את כל המשרות של המעסיק המחובר
-      const response = await api.get('/employers/my-jobs');
+      const id = getUserId(); // מחלץ את ה-nameid מהטוקן
+      
+      if (!id) {
+        toast.error("לא נמצא מזהה משתמש, אנא התחברי מחדש");
+        return;
+      }
+
+      // הניתוב המדויק ל-C#: api/Employer/{id}/jobs
+      const response = await api.get(`/Employer/${id}/jobs`);
       setJobs(response.data);
     } catch (error) {
       console.error("שגיאה בטעינת משרות:", error);
+      toast.error("נכשלה טעינת המשרות מהשרת");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const id = getUserId();
+      if (editingJob) {
+        // עדכון: api/Employer/{id}
+        await api.put(`/Employer/${editingJob.id}`, form);
+        toast.success("המשרה עודכנה בהצלחה");
+      } else {
+        // יצירה: שולחים פוסט לקונטרולר הכללי עם הנתונים
+        // שימי לב: וודאי שה-DTO בסישארפ כולל שדה של EmployerId
+        await api.post('/Employer', { ...form, employerId: id });
+        toast.success("המשרה נוספה בהצלחה! ✅");
+      }
+      setDialogOpen(false); 
+      resetForm(); 
+      loadData();
+    } catch (error) {
+      toast.error("השמירה נכשלה - בדקי את נתוני הטופס");
+    }
+  };
+
+  const handleDelete = async (jobId: string) => {
+    if (!window.confirm("בטוח שברצונך למחוק את המשרה?")) return;
+    try {
+      // מחיקה: api/Employer/{id}
+      await api.delete(`/Employer/${jobId}`);
+      toast.success("המשרה נמחקה");
+      loadData();
+    } catch (error) {
+      toast.error("המחיקה נכשלה");
     }
   };
 
   const resetForm = () => { 
     setForm({ title: "", description: "", city: "", payment: 35, level: "easy", is_remote: false, with_people: false, status: "open" }); 
     setEditingJob(null); 
-  };
-
-  const handleSave = async () => {
-    try {
-      if (editingJob) {
-        // עדכון משרה קיימת
-        await api.put(`/jobs/${editingJob.id}`, form);
-        toast({ title: "המשרה עודכנה בהצלחה" });
-      } else {
-        // יצירת משרה חדשה
-        await api.post('/jobs', form);
-        toast({ title: "המשרה נוספה! ✅" });
-      }
-      setDialogOpen(false); 
-      resetForm(); 
-      loadData();
-    } catch (error) {
-      toast({ title: "השמירה נכשלה", variant: "destructive" });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("בטוח שברצונך למחוק את המשרה?")) return;
-    try {
-      await api.delete(`/jobs/${id}`);
-      toast({ title: "המשרה נמחקה" });
-      loadData();
-    } catch (error) {
-      toast({ title: "המחיקה נכשלה", variant: "destructive" });
-    }
   };
 
   const handleEdit = (job: JobListing) => {
@@ -104,17 +117,113 @@ export default function EmployerJobs() {
   );
 
   return (
-  <> {/* הוספת Fragment עוטף */}
-    <motion.div 
-      initial={{ opacity: 0, y: 15 }} 
-      animate={{ opacity: 1, y: 0 }}
-    >
-      {/* כאן נכנס כל ה-JSX של הדף ששלחת קודם */}
-      <h1>המשרות שלי</h1>
-      {/* ... שאר הקוד ... */}
-    </motion.div>
+    <div className="p-6 max-w-6xl mx-auto text-right" dir="rtl">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">ניהול משרות</h1>
+          <p className="text-white/60">נהל את המשרות הפעילות שלך והצעות עבודה</p>
+        </div>
+        <button 
+          onClick={() => { resetForm(); setDialogOpen(true); }}
+          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <Plus size={20} />
+          משרה חדשה
+        </button>
+      </div>
 
-    {/* הערות צריכות להיות בתוך הסוגריים של ה-Fragment או בתוך ה-div */}
-    {/* בכפתור המחיקה - נשאר זהה למה ששלחת, רק עם הקריאה ל-handleDelete */}
-  </>
-)};
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {jobs.map((job) => (
+          <motion.div 
+            key={job.id}
+            className="bg-[#111827] border border-white/10 rounded-xl p-5 hover:border-cyan-500/50 transition-all shadow-xl"
+            layout
+          >
+            <div className="flex justify-between items-start mb-4">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${STATUS_COLORS[job.status]}`}>
+                {STATUS_LABELS[job.status]}
+              </span>
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(job)} className="p-2 hover:bg-white/5 rounded-lg text-white/60 hover:text-cyan-400 transition-colors">
+                  <Pencil size={18} />
+                </button>
+                <button onClick={() => handleDelete(job.id)} className="p-2 hover:bg-white/5 rounded-lg text-white/60 hover:text-red-400 transition-colors">
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-2">{job.title}</h3>
+            <p className="text-white/60 text-sm mb-4 line-clamp-2">{job.description}</p>
+
+            <div className="space-y-3 border-t border-white/5 pt-4">
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <MapPin size={16} className="text-cyan-400" />
+                {job.city} {job.is_remote && "(מרחוק)"}
+              </div>
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <DollarSign size={16} className="text-emerald-400" />
+                {job.payment} ₪ לשעה
+              </div>
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <Briefcase size={16} className="text-purple-400" />
+                רמה: {LEVEL_LABELS[job.level]}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="bg-[#0F172A] border-white/10 text-white max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>{editingJob ? "עריכת משרה" : "הוספת משרה חדשה"}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>כותרת המשרה</Label>
+              <Input 
+                value={form.title} 
+                onChange={e => setForm({...form, title: e.target.value})}
+                className="bg-white/5 border-white/10 focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>תיאור</Label>
+              <Textarea 
+                value={form.description} 
+                onChange={e => setForm({...form, description: e.target.value})}
+                className="bg-white/5 border-white/10 focus:border-cyan-500 h-24"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>עיר</Label>
+                <Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} className="bg-white/5 border-white/10" />
+              </div>
+              <div className="space-y-2">
+                <Label>שכר לשעה</Label>
+                <Input type="number" value={form.payment} onChange={e => setForm({...form, payment: Number(e.target.value)})} className="bg-white/5 border-white/10" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+              <Label>עבודה מרחוק?</Label>
+              <Switch checked={form.is_remote} onCheckedChange={val => setForm({...form, is_remote: val})} />
+            </div>
+
+            <button 
+              onClick={handleSave}
+              className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20"
+            >
+              {editingJob ? "עדכן משרה" : "פרסם משרה"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

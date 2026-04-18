@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/api/apiClient";
+import { userApi } from "@/api/userApi"; 
 import { motion } from "framer-motion";
 import { Briefcase, Users, ArrowLeft, Sparkles } from "lucide-react";
-import { toast } from "sonner"; // שימוש ב-Sonner כפי שמופיע ב-Imports שלך
+import { toast } from "sonner";
 import { saveToken } from "@/lib/auth";
 
 export default function Setup() {
   const [selectedType, setSelectedType] = useState<"Candidate" | "Employer" | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // משתנים חדשים שנוספו כדי לתמוך בפונקציית הרישום
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -25,47 +24,42 @@ export default function Setup() {
     
     setLoading(true);
     try {
-      // 1. קביעת ה-Endpoint לפי הפורמט שביקשו ממך (lower case)
-      const rolePath = selectedType.toLowerCase();
-      const endpoint = `/User/register/${rolePath}`;
+      // 🔴 יצירת האובייקט בהתאמה מלאה ל-UserDto ב-C#
+      const userDto = {
+        Id: 0,                   // 🔴 נוסף כי ב-C# ה-Id הוא int (חובה)
+        Name: fullName,          // 🔴 שינוי מ-fullName ל-Name כדי להתאים ל-DTO
+        Email: email,            // 🔴 אות גדולה בתחילה (PascalCase)
+        UserType: selectedType,  // 🔴 שליחת ה-Role כפי שמופיע ב-DTO
+        IsEnable: true           // 🔴 נוסף כי ב-C# ה-bool הוא חובה
+      };
 
-      // 2. ביצוע הקריאה לשרת - העברת סיסמה ב-URL ושאר הנתונים ב-Body
-      // שימוש ב-api (Axios) במקום fetch כדי לשמור על עקביות
-      const res = await api.post(`${endpoint}?password=${password}`, {
-        email,
-        fullName
-      });
+      let token: string;
 
-      // 3. שמירת הטוקן (השרת מחזיר string של הטוקן)
-      const token = res.data;
+      // קריאה ל-Service המרוכז
+      if (selectedType === "Candidate") {
+        token = await userApi.registerCandidate(userDto as any, password);
+      } else {
+        token = await userApi.registerEmployer(userDto as any, password);
+      }
+
       saveToken(token);
-
       toast.success("נרשמת בהצלחה! ✨");
 
-      // 4. ניתוב לדף המתאים
       if (selectedType === "Candidate") {
         navigate("/candidate/profile");
       } else {
         navigate("/employer/jobs");
       }
     } catch (error: any) {
-    console.error("שגיאה ברישום:", error);
-    
-    // 1. נחלץ הודעה בצורה בטוחה
-    let message = "ההרשמה נכשלה, נסה שנית";
-    
-    if (error.response?.data) {
-        // אם השרת שלח אובייקט, ניקח רק את ה-title שלו
-        if (typeof error.response.data === 'object') {
-            message = error.response.data.title || JSON.stringify(error.response.data);
-        } else {
-            message = error.response.data;
-        }
-    }
-
-    // 2. נציג רק את המחרוזת
-    toast.error(String(message)); 
-
+      console.error("שגיאה ברישום:", error);
+      
+      let message = "ההרשמה נכשלה, נסה שנית";
+      if (error.response?.data) {
+        // חילוץ הודעת השגיאה המפורטת מהשרת
+        message = error.response.data.title || error.response.data.errors || error.response.data;
+      }
+      
+      toast.error(typeof message === 'object' ? "נתונים לא תקינים בשרת" : String(message)); 
     } finally {
       setLoading(false);
     }
@@ -99,22 +93,22 @@ export default function Setup() {
           <p className="text-white/40 text-sm">הבחירה תעזור לנו להתאים עבורכם את החוויה</p>
         </div>
 
-        {/* --- חדש: שדות קלט לרישום --- */}
+        {/* Input Fields */}
         <div className="space-y-4 mb-8">
           <input 
             type="text" placeholder="שם מלא" value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none transition-all"
           />
           <input 
             type="email" placeholder="אימייל" value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none transition-all"
           />
           <input 
             type="password" placeholder="סיסמה" value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none"
+            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:border-cyan-500 outline-none transition-all"
           />
         </div>
 
@@ -132,7 +126,7 @@ export default function Setup() {
               className={`relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden group ${
                 selectedType === id
                   ? "border-cyan-500 bg-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.1)]"
-                  : "border-white/8 bg-white/3 hover:border-white/15"
+                  : "border-white/5 bg-white/3 hover:border-white/10"
               }`}
             >
               <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors ${
@@ -148,12 +142,12 @@ export default function Setup() {
 
         {/* Action Button */}
         <motion.button
-          whileHover={selectedType ? { scale: 1.02 } : {}}
-          whileTap={selectedType ? { scale: 0.98 } : {}}
+          whileHover={selectedType && !loading ? { scale: 1.02 } : {}}
+          whileTap={selectedType && !loading ? { scale: 0.98 } : {}}
           onClick={handleSubmit}
           disabled={!selectedType || loading || !email || !password}
-          className={`w-full relative py-4 rounded-2xl text-base font-bold transition-all duration-300 ${
-            selectedType && email && password
+          className={`w-full relative py-4 rounded-2xl text-base font-bold transition-all duration-300 overflow-hidden ${
+            selectedType && email && password && !loading
               ? "opacity-100 shadow-lg shadow-cyan-500/20 cursor-pointer" 
               : "opacity-30 cursor-not-allowed filter grayscale"
           }`}
