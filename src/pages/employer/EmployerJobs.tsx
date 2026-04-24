@@ -40,6 +40,8 @@ export default function EmployerJobs() {
     try {
       setLoading(true);
       const id = getUserId(); // מחלץ את ה-nameid מהטוקן
+      debugger
+      console.log(id);
       
       if (!id) {
         toast.error("לא נמצא מזהה משתמש, אנא התחברי מחדש");

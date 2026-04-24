@@ -52,7 +52,7 @@ const AuthenticatedApp = () => {
       />
 
       {/* --- נתיבים מוגנים (עטופים ב-Layout) --- */}
-      <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
+      <Route element={ <Layout />}>
         {/* נתיבי מעסיק */}
         <Route path="/employer/jobs" element={<EmployerJobs />} />
         <Route path="/employer/matches" element={<EmployerMatches />} />

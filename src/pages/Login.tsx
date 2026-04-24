@@ -17,57 +17,57 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
-    debugger
-  e.preventDefault();
-  setLoading(true);
-  console.log("1. התחלתי לוגין עם:", email);
-
-  try {
-    const res = await api.post(
-      `/User/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-    );
     
-    console.log("2. תשובה מהשרת:", res.data);
-    
-    // לפעמים ב-C# הטוקן חוזר בתוך אובייקט, למשל res.data.token
-    // ננסה לקחת אותו בכל מקרה:
-    const token = typeof res.data === 'string' ? res.data : res.data.token; 
+    e.preventDefault();
+    setLoading(true);
+    console.log("1. התחלתי לוגין עם:", email);
 
-    if (token) {
-      console.log("3. נמצא טוקן! שומר ב-Storage...");
-      localStorage.setItem('token', token);
-      
-      console.log("4. מעדכן קונטקסט...");
-      login(token); 
+    try {
+      const res = await api.post(
+        `/User/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      );
 
-      toast.success("התחברת בהצלחה! ✨");
-      
-      // נעשה מעבר דף קשיח כדי לוודא שהכל נטען
-      // window.location.href = "/employer/jobs";
-      navigate('/employer/jobs')
-    } else {
-      console.error("3. שגיאה: השרת לא החזיר טוקן בפורמט צפוי", res.data);
-      toast.error("שגיאה בקבלת נתונים מהשרת");
+      console.log("2. תשובה מהשרת:", res.data);
+
+      // לפעמים ב-C# הטוקן חוזר בתוך אובייקט, למשל res.data.token
+      // ננסה לקחת אותו בכל מקרה:
+      const token = typeof res.data === 'string' ? res.data : res.data.token;
+
+      if (token) {
+        console.log("3. נמצא טוקן! שומר ב-Storage...");
+        localStorage.setItem('token', token);
+
+        console.log("4. מעדכן קונטקסט...");
+        login(token);
+
+        toast.success("התחברת בהצלחה! ✨");
+
+        // נעשה מעבר דף קשיח כדי לוודא שהכל נטען
+        // window.location.href = "/employer/jobs";
+        navigate('/employer/jobs')
+      } else {
+        console.error("3. שגיאה: השרת לא החזיר טוקן בפורמט צפוי", res.data);
+        toast.error("שגיאה בקבלת נתונים מהשרת");
+      }
+
+    } catch (err: any) {
+      console.error("שגיאה בתקשורת עם השרת:", err);
+      const errorMsg = err.response?.data || "מייל או סיסמה לא נכונים";
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-    
-  } catch (err: any) {
-    console.error("שגיאה בתקשורת עם השרת:", err);
-    const errorMsg = err.response?.data || "מייל או סיסמה לא נכונים";
-    toast.error(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   return (
     <div className="min-h-screen bg-[#080C14] text-white flex items-center justify-center px-6 relative overflow-hidden" dir="rtl">
-      
+
       {/* אלמנטים עיצוביים ברקע */}
       <div className="absolute top-0 left-0 w-full h-full -z-10">
         <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-[100px]" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -87,13 +87,13 @@ export default function Login() {
           <p className="text-white/40 mt-2">הזן את פרטיך כדי להמשיך ל-EasyJob</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form  className="space-y-5">
           <div className="space-y-2">
             <label className="text-sm text-white/60 mr-1 font-medium italic">כתובת אימייל</label>
             <div className="relative group">
               <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-cyan-400 transition-colors" />
-              <input 
-                type="email" 
+              <input
+                type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -110,8 +110,8 @@ export default function Login() {
             </div>
             <div className="relative group">
               <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-cyan-400 transition-colors" />
-              <input 
-                type="password" 
+              <input
+                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -121,8 +121,9 @@ export default function Login() {
             </div>
           </div>
 
-          <Button 
+          <Button
             type="submit"
+            onClick={handleLogin}
             disabled={loading}
             className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-7 rounded-2xl mt-4 shadow-lg shadow-cyan-500/10 transition-all text-lg group"
           >
