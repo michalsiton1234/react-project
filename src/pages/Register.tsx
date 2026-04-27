@@ -25,8 +25,9 @@ export default function Register() {
     try {
       // שליחת נתוני הרשמה לשרת הסישארפ
       const res = await api.post("/auth/register", formData);
-      
-      // התחברות אוטומטית לאחר הרשמה
+      localStorage.setItem("token", res.data.token); // הוסיפי שורה זו כאן
+
+      // התחברות אוטומטית לאחר הרשמה הוספתי את זה .........
       login(res.data.token, res.data.user);
       
       toast({ title: "נרשמת בהצלחה!", description: "עכשיו נגדיר את סוג החשבון" });

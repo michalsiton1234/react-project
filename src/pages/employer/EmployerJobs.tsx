@@ -39,17 +39,21 @@ export default function EmployerJobs() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const id = getUserId(); // מחלץ את ה-nameid מהטוקן
-      debugger
+      const id = getUserId(); 
+      // מחלץ את ה-nameid מהטוקן
+   
       console.log(id);
-      
+          debugger
+
       if (!id) {
         toast.error("לא נמצא מזהה משתמש, אנא התחברי מחדש");
         return;
       }
-
+   
       // הניתוב המדויק ל-C#: api/Employer/{id}/jobs
-      const response = await api.get(`/Employer/${id}/jobs`);
+      
+      const response = await api.get(`/Employer/${id}/jobs`);//מה הולך פה?
+   
       setJobs(response.data);
     } catch (error) {
       console.error("שגיאה בטעינת משרות:", error);

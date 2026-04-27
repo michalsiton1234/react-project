@@ -21,7 +21,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     console.log("1. התחלתי לוגין עם:", email);
-
+debugger
     try {
       const res = await api.post(
         `/User/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`

@@ -34,7 +34,7 @@ export default function CandidateProfile() {
     try {
       setLoading(true);
       // בסישארפ שלך - נתיב שמביא את הפרופיל של המשתמש המחובר
-      const response = await api.get('/candidates/my-profile');
+      const response = await api.get('/Candidate/my-profile');
       if (response.data) {
         const p = response.data;
         setForm({
@@ -59,7 +59,7 @@ export default function CandidateProfile() {
     setSaving(true);
     try {
       // בסישארפ שלך - POST או PUT לעדכון הפרופיל
-      await api.post('/candidates/profile', form);
+      await api.post('/Candidate/profile', form);
       toast({ title: "הפרופיל נשמר! ✅" });
       loadData();
     } catch (error) {
