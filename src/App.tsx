@@ -17,7 +17,7 @@ import Accepted from './pages/candidate/Accepted';
 import EmployerJobs from './pages/employer/EmployerJobs';
 import EmployerMatches from './pages/employer/EmployerMatches';
 import Admin from './pages/Admin';
-debugger
+
 const AuthenticatedApp = () => {
   // --- התיקון כאן: משתמשים במידע האמיתי מה-AuthContext ---
   const { isLoading, isAuthenticated } = useAuth();

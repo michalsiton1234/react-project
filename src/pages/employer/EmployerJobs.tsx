@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { api } from "@/api/apiClient"; 
+import { api } from "@/api/apiClient";
 import { motion } from "framer-motion";
 import { Plus, Briefcase, MapPin, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,10 @@ import type { JobListing } from "@/models/JobListing";
 
 const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
 const STATUS_LABELS = { open: "פתוחה", closed: "סגורה", filled: "אוישה" };
-const STATUS_COLORS = { 
-  open: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", 
-  closed: "text-white/40 bg-white/5 border-white/10", 
-  filled: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20" 
+const STATUS_COLORS = {
+  open: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  closed: "text-white/40 bg-white/5 border-white/10",
+  filled: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"
 };
 
 export default function EmployerJobs() {
@@ -26,34 +26,34 @@ export default function EmployerJobs() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<JobListing | null>(null);
-  
-  const [form, setForm] = useState({ 
-    title: "", description: "", city: "", payment: 35, 
-    level: "easy", is_remote: false, with_people: false, status: "open" 
+
+  const [form, setForm] = useState({
+    title: "", description: "", city: "", payment: 35,
+    level: "easy", is_remote: false, with_people: false, status: "open"
   });
 
-  useEffect(() => { 
-    loadData(); 
+  useEffect(() => {
+    loadData();
   }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const id = getUserId(); 
+      const id = getUserId();
       // מחלץ את ה-nameid מהטוקן
-   
+debugger
       console.log(id);
-          debugger
+      debugger
 
       if (!id) {
         toast.error("לא נמצא מזהה משתמש, אנא התחברי מחדש");
         return;
       }
-   
+
       // הניתוב המדויק ל-C#: api/Employer/{id}/jobs
-      
-      const response = await api.get(`/Employer/${id}/jobs`);//מה הולך פה?
-   
+
+      const response = await api.get(`/JobListing/getByEmp${id}`);//מה הולך פה?
+
       setJobs(response.data);
     } catch (error) {
       console.error("שגיאה בטעינת משרות:", error);
@@ -68,27 +68,45 @@ export default function EmployerJobs() {
       const id = getUserId();
       if (editingJob) {
         // עדכון: api/Employer/{id}
-        await api.put(`/Employer/${editingJob.id}`, form);
+        await api.put(`/JobListing/${editingJob.id}`, form);
         toast.success("המשרה עודכנה בהצלחה");
       } else {
         // יצירה: שולחים פוסט לקונטרולר הכללי עם הנתונים
         // שימי לב: וודאי שה-DTO בסישארפ כולל שדה של EmployerId
-        await api.post('/Employer', { ...form, employerId: id });
+        // await api.post('/Employer', { ...form, employerId: id });
+        // ✅ נכון
+      debugger
+        await api.post('/JobListing', {
+          employerId: Number(id),
+          categoryId: 2, // צריך שדה קטגוריה בטופס
+          title: form.title,
+          description: form.description,
+          location: form.city,
+          payment: form.payment,
+          leveJob: form.level === 'easy' ? 0 : form.level === 'medium' ? 1 : 2,
+          isRemote: form.is_remote,
+          isJobWithPepole: form.with_people,
+          isCatch: false,
+          requiredDate: new Date().toISOString()
+        });
         toast.success("המשרה נוספה בהצלחה! ✅");
       }
-      setDialogOpen(false); 
-      resetForm(); 
+      setDialogOpen(false);
+      resetForm();
       loadData();
     } catch (error) {
+      console.log("שגיאה בשמירת המשרה:", error);
+      
       toast.error("השמירה נכשלה - בדקי את נתוני הטופס");
     }
   };
 
   const handleDelete = async (jobId: string) => {
+    
     if (!window.confirm("בטוח שברצונך למחוק את המשרה?")) return;
     try {
       // מחיקה: api/Employer/{id}
-      await api.delete(`/Employer/${jobId}`);
+      await api.delete(`/JobListing/${jobId}`);
       toast.success("המשרה נמחקה");
       loadData();
     } catch (error) {
@@ -96,22 +114,23 @@ export default function EmployerJobs() {
     }
   };
 
-  const resetForm = () => { 
-    setForm({ title: "", description: "", city: "", payment: 35, level: "easy", is_remote: false, with_people: false, status: "open" }); 
-    setEditingJob(null); 
+  const resetForm = () => {
+    debugger
+    setForm({ title: "", description: "", city: "", payment: 35, level: "easy", is_remote: false, with_people: false, status: "open" });
+    setEditingJob(null);
   };
 
   const handleEdit = (job: JobListing) => {
     setEditingJob(job);
-    setForm({ 
-      title: job.title, 
-      description: job.description || "", 
-      city: job.city || "", 
-      payment: job.payment || 35, 
-      level: job.level || "easy", 
-      is_remote: job.is_remote || false, 
-      with_people: job.with_people || false, 
-      status: job.status || "open" 
+    setForm({
+      title: job.title,
+      description: job.description || "",
+      city: job.city || "",
+      payment: job.payment || 35,
+      level: job.level || "easy",
+      is_remote: job.is_remote || false,
+      with_people: job.with_people || false,
+      status: job.status || "open"
     });
     setDialogOpen(true);
   };
@@ -129,7 +148,7 @@ export default function EmployerJobs() {
           <h1 className="text-3xl font-bold text-white mb-2">ניהול משרות</h1>
           <p className="text-white/60">נהל את המשרות הפעילות שלך והצעות עבודה</p>
         </div>
-        <button 
+        <button
           onClick={() => { resetForm(); setDialogOpen(true); }}
           className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition-colors"
         >
@@ -140,7 +159,7 @@ export default function EmployerJobs() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {jobs.map((job) => (
-          <motion.div 
+          <motion.div
             key={job.id}
             className="bg-[#111827] border border-white/10 rounded-xl p-5 hover:border-cyan-500/50 transition-all shadow-xl"
             layout
@@ -185,22 +204,22 @@ export default function EmployerJobs() {
           <DialogHeader>
             <DialogTitle>{editingJob ? "עריכת משרה" : "הוספת משרה חדשה"}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label>כותרת המשרה</Label>
-              <Input 
-                value={form.title} 
-                onChange={e => setForm({...form, title: e.target.value})}
+              <Input
+                value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
                 className="bg-white/5 border-white/10 focus:border-cyan-500"
               />
             </div>
 
             <div className="space-y-2">
               <Label>תיאור</Label>
-              <Textarea 
-                value={form.description} 
-                onChange={e => setForm({...form, description: e.target.value})}
+              <Textarea
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
                 className="bg-white/5 border-white/10 focus:border-cyan-500 h-24"
               />
             </div>
@@ -208,20 +227,20 @@ export default function EmployerJobs() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>עיר</Label>
-                <Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} className="bg-white/5 border-white/10" />
+                <Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className="bg-white/5 border-white/10" />
               </div>
               <div className="space-y-2">
                 <Label>שכר לשעה</Label>
-                <Input type="number" value={form.payment} onChange={e => setForm({...form, payment: Number(e.target.value)})} className="bg-white/5 border-white/10" />
+                <Input type="number" value={form.payment} onChange={e => setForm({ ...form, payment: Number(e.target.value) })} className="bg-white/5 border-white/10" />
               </div>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
               <Label>עבודה מרחוק?</Label>
-              <Switch checked={form.is_remote} onCheckedChange={val => setForm({...form, is_remote: val})} />
+              <Switch checked={form.is_remote} onCheckedChange={val => setForm({ ...form, is_remote: val })} />
             </div>
 
-            <button 
+            <button
               onClick={handleSave}
               className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20"
             >

@@ -131,6 +131,7 @@ export const removeToken = () => localStorage.removeItem("token");
 // 3. פונקציות שליפת מידע מהטוקן
 export const getUser = () => {
   const token = getToken();
+  
   if (!token) return null;
   try {
     return jwtDecode<UserToken>(token);
@@ -141,7 +142,7 @@ export const getUser = () => {
 
 export const getUserId = () => {
   const user = getUser();
-  return user?.nameid || null;
+  return user?.sub || null;
 };
 
 export const getUserRole = () => {

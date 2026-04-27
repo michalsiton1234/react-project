@@ -21,7 +21,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     console.log("1. התחלתי לוגין עם:", email);
-debugger
+    
     try {
       const res = await api.post(
         `/User/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
@@ -44,7 +44,14 @@ debugger
 
         // נעשה מעבר דף קשיח כדי לוודא שהכל נטען
         // window.location.href = "/employer/jobs";
-        navigate('/employer/jobs')
+        debugger
+        const role = getUserRole();
+        if (role == 'employer') {
+          navigate('/employer/jobs');
+        }
+
+        else if (role == 'candidate') { navigate('/candidate/my-profile'); }
+        else navigate('/');
       } else {
         console.error("3. שגיאה: השרת לא החזיר טוקן בפורמט צפוי", res.data);
         toast.error("שגיאה בקבלת נתונים מהשרת");
@@ -87,7 +94,7 @@ debugger
           <p className="text-white/40 mt-2">הזן את פרטיך כדי להמשיך ל-EasyJob</p>
         </div>
 
-        <form  className="space-y-5">
+        <form className="space-y-5">
           <div className="space-y-2">
             <label className="text-sm text-white/60 mr-1 font-medium italic">כתובת אימייל</label>
             <div className="relative group">
