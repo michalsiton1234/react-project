@@ -67,7 +67,7 @@ export default function CandidateProfile() {
                 response = await api.get('/api/Candidate/GetProfile');  // ניסיון חמישי - עם api
               } catch (e5) {
                 console.log("כל הניסיונות נכשלו, מנסה נתיב אחרון...");
-                response = await api.get('/Candidate/profile');  // ניסיון אחרון - Candidate/profile
+                response = await api.get('/candidate/profile');  // ניסיון אחרון - Candidate/profile
               }
             }
           }
@@ -148,7 +148,7 @@ export default function CandidateProfile() {
         max_distance: form.max_distance,
         min_hourly_rate: form.min_hourly_rate,
         activity: form.activity,
-        level: parseInt(form.level), // המרת level למספר
+        level: form.level, // שליחת level כמחרוזת enum
         is_remote_only: form.is_remote_only,
         with_people: form.with_people
       }
@@ -196,7 +196,7 @@ export default function CandidateProfile() {
           max_distance: 10,
           min_hourly_rate: 30,
           activity: true,
-          level: 1, // מספר 1 עבור "easy"
+          level: "easy", // מחרוזת enum תקינה
           is_remote_only: false,
           with_people: true
         }
