@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/api/apiClient"; // ה-Axios שלך
 import type { CandidateProfile as CandidateProfileType } from "@/models/CandidateProfile"; // המודל שבנינו
 import { motion } from "framer-motion";
@@ -16,6 +17,7 @@ const LEVELS = [
 
 
 export default function CandidateProfile() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -152,25 +154,25 @@ export default function CandidateProfile() {
       }
     };
     
-    // ניסיון 1: PUT עם אותיות קטנות ומבנה נכונה
+    // ניסיון 1: PUT לנתיב הנכון שהשרת מצפה לו
     try {
-      console.log("ניסיון 1: PUT ל-/candidate/profile/me עם מבנה נכונה");
+      console.log("ניסיון 1: PUT ל-/Candidate/profile עם מבנה נכון");
       console.log("נתונים מעוצבים:", requestData);
-      const response = await api.put('/candidate/profile/me', requestData);
+      const response = await api.put('/Candidate/profile', requestData);
       console.log("✅ PUT הצליח:", response.status, response.data);
       saved = true;
     } catch (e1) {
       console.log("❌ PUT נכשל:", e1.response?.status, e1.response?.data);
       lastError = e1;
       
-      // ניסיון 2: PUT עם אותיות גדולות
+      // ניסיון 2: PUT עם אותיות קטנות
       try {
-        console.log("ניסיון 2: PUT ל-/Candidate/profile/me עם מבנה נכונה");
-        const response = await api.put('/Candidate/profile/me', requestData);
-        console.log("✅ PUT גדול הצליח:", response.status, response.data);
+        console.log("ניסיון 2: PUT ל-/candidate/profile עם מבנה נכון");
+        const response = await api.put('/candidate/profile', requestData);
+        console.log("✅ PUT עם אותיות קטנות הצליח:", response.status, response.data);
         saved = true;
       } catch (e2) {
-        console.log("❌ PUT גדול נכשל:", e2.response?.status, e2.response?.data);
+        console.log("❌ PUT עם אותיות קטנות נכשל:", e2.response?.status, e2.response?.data);
         lastError = e2;
       }
     }
@@ -178,6 +180,10 @@ export default function CandidateProfile() {
     if (saved) {
       toast.success("הפרופיל נשמר!");
       loadData();
+      // Navigate to candidate dashboard or jobs page after successful save
+      setTimeout(() => {
+        navigate('/candidate/dashboard');
+      }, 1500);
     } else {
       console.error("=== כל הניסיונות נכשלו ===");
       console.error("שגיאה אחרונה:", lastError);
@@ -198,11 +204,14 @@ export default function CandidateProfile() {
       
       try {
         console.log("ניסיון עם נתונים מינימליים:", minimalData);
-        const response = await api.put('/candidate/profile/me', minimalData);
+        const response = await api.put('/Candidate/profile', minimalData);
         console.log("✅ ניסיון מינימלי הצליח:", response.status);
         toast.success("הפרופיל נשמר עם נתונים מינימליים!");
         loadData();
         setSaving(false);
+        setTimeout(() => {
+          navigate('/candidate/dashboard');
+        }, 1500);
         return;
       } catch (minimalError) {
         console.log("❌ גם ניסיון מינימלי נכשל:", minimalError.response?.status, minimalError.response?.data);
