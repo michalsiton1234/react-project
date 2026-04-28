@@ -40,7 +40,8 @@
 import axios from 'axios';
 
 // 1. ודאי שהפורט (5035) הוא באמת הפורט של ה-C# שלך כרגע
-const BASE_URL = 'http://localhost:5035/api';
+// תיקון לפורט 7198 שבו נמצא ה-API של המועמדים
+const BASE_URL = 'https://localhost:7198/api';
 
 export const api = axios.create({
   baseURL: BASE_URL,

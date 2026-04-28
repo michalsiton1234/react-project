@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { userApi } from "@/api/userApi"; 
+import { api } from "@/api/apiClient";
 import { motion } from "framer-motion";
 import { Briefcase, Users, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { saveToken } from "@/lib/auth";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Setup() {
   const [selectedType, setSelectedType] = useState<"Candidate" | "Employer" | null>(null);
@@ -15,6 +17,7 @@ export default function Setup() {
   const [password, setPassword] = useState("");
 
   const navigate = useNavigate();
+  const { checkAuth } = useAuth();
 
   const handleSubmit = async () => {
     if (!selectedType) {
@@ -43,13 +46,38 @@ export default function Setup() {
       }
 
       saveToken(token);
-      toast.success("נרשמת בהצלחה! ✨");
-
+      
+      // יצירת פרופיל בסיסי למועמדים חדשים
       if (selectedType === "Candidate") {
-        navigate("/candidate/profile");
-      } else {
-        navigate("/employer/jobs");
+        try {
+          const profileData = {
+            city: "",
+            max_distance: 10,
+            min_hourly_rate: 30,
+            activity: true,
+            level: "easy",
+            is_remote_only: false,
+            with_people: true
+          };
+          
+          await api.post('/Candidate/profile', profileData);
+          console.log("DEBUG: פרופיל בסיסי נוצר בהצלחה");
+        } catch (error) {
+          console.error("DEBUG: שגיאה ביצירת פרופיל בסיסי:", error);
+        }
       }
+      
+      // המתנה לקריאה ל-checkAuth כדי לוודא שהמצב מתעדכן
+      setTimeout(() => {
+        checkAuth();
+        
+        if (selectedType === "Candidate") {
+          navigate("/candidate/profile");
+        } else {
+          navigate("/employer/jobs");
+        }
+      }, 100); // המתנה קצרה כדי לתת ל-AuthContext להתעדכן
+      toast.success("נרשמת בהצלחה! ✨");
     } catch (error: any) {
       console.error("שגיאה ברישום:", error);
       

@@ -42,16 +42,8 @@ export default function Login() {
 
         toast.success("התחברת בהצלחה! ✨");
 
-        // נעשה מעבר דף קשיח כדי לוודא שהכל נטען
-        // window.location.href = "/employer/jobs";
-        debugger
-        const role = getUserRole();
-        if (role == 'employer') {
-          navigate('/employer/jobs');
-        }
-
-        else if (role == 'candidate') { navigate('/candidate/my-profile'); }
-        else navigate('/');
+        // הניווט האוטומטי יתבצע מה-App.tsx לפי התפקיד של המשתמש
+        // אין צורך לניווט ידני כאן
       } else {
         console.error("3. שגיאה: השרת לא החזיר טוקן בפורמט צפוי", res.data);
         toast.error("שגיאה בקבלת נתונים מהשרת");

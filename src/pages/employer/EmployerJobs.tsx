@@ -276,14 +276,8 @@ import {
 } from "@/components/ui/dialog";
 
 import { toast } from "sonner";
-import { getUserId } from "@/lib/auth";
+import { getUserId, getUser, getEmployerId } from "@/lib/auth";
 import type { JobListing } from "@/models/JobListing";
-
-const STATUS_COLORS = {
-  open: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  closed: "text-white/40 bg-white/5 border-white/10",
-  filled: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-};
 
 export default function EmployerJobs() {
   const [jobs, setJobs] = useState<JobListing[]>([]);
@@ -309,13 +303,14 @@ export default function EmployerJobs() {
     try {
       setLoading(true);
 
-      const id = getUserId();
-      if (!id) {
-        toast.error("משתמש לא מזוהה");
+      const employerId = await getEmployerId();
+      if (!employerId) {
+        toast.error("לא נמצא EmployerId תקין");
         return;
       }
 
-      const res = await api.get(`/JobListing/getByEmp/${id}`);
+      console.log("DEBUG: Loading jobs with EmployerId:", employerId);
+      const res = await api.get(`/JobListing/getByEmp/${employerId}`);
       setJobs(res.data);
     } catch (err) {
       console.error(err);
@@ -347,7 +342,7 @@ export default function EmployerJobs() {
       location: job.location,
       payment: job.payment,
       is_remote: job.isRemote,
-      is_job_with_people: job.isJobWithPeople,
+      is_job_with_people: job.isJobWithPepole,
       is_catch: job.isCatch,
     });
 
@@ -356,13 +351,23 @@ export default function EmployerJobs() {
 
   const handleSave = async () => {
     try {
-      const id = getUserId();
-      if (!id) return;
+      const userId = getUserId();
+      if (!userId) return;
+      
+      const employerId = await getEmployerId();
+      if (!employerId) {
+        toast.error("לא נמצא EmployerId תקין");
+        return;
+      }
+      
+      console.log("DEBUG: Full user token data:", getUser());
+      console.log("DEBUG: User ID from token:", userId);
+      console.log("DEBUG: EmployerId to send:", employerId);
 
       if (editingJob) {
         await api.put(`/JobListing/${editingJob.id}`, {
           id: editingJob.id,
-          employerId: Number(id),
+          employerId: employerId,
           categoryId: editingJob.categoryId,
 
           title: form.title,
@@ -372,7 +377,7 @@ export default function EmployerJobs() {
 
           isCatch: form.is_catch,
           isRemote: form.is_remote,
-          isJobWithPeople: form.is_job_with_people,
+          isJobWithPepole: form.is_job_with_people,
 
           requiredDate: editingJob.requiredDate,
         });
@@ -380,7 +385,8 @@ export default function EmployerJobs() {
         toast.success("המשרה עודכנה");
       } else {
         await api.post("/JobListing", {
-          employerId: Number(id),
+          id: 0,
+          employerId: employerId,
           categoryId: 2,
 
           title: form.title,
@@ -390,7 +396,8 @@ export default function EmployerJobs() {
 
           isCatch: form.is_catch,
           isRemote: form.is_remote,
-          isJobWithPeople: form.is_job_with_people,
+          isJobWithPepole: form.is_job_with_people,
+          leveJob: 0, // Easy - ערך ברירת מחדל
 
           requiredDate: new Date().toISOString(),
         });
@@ -401,9 +408,20 @@ export default function EmployerJobs() {
       setDialogOpen(false);
       resetForm();
       loadJobs();
-    } catch (err) {
-      console.error(err);
-      toast.error("שגיאה בשמירה");
+    } catch (err: any) {
+      console.error("Full error details:", err);
+      if (err.response) {
+        console.error("Response data:", err.response.data);
+        console.error("Response status:", err.response.status);
+        console.error("Response headers:", err.response.headers);
+        toast.error(`שגיאה בשמירה: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
+      } else if (err.request) {
+        console.error("Request error:", err.request);
+        toast.error("שגיאה בשמירה - בעיית רשת");
+      } else {
+        console.error("Error message:", err.message);
+        toast.error(`שגיאה בשמירה: ${err.message}`);
+      }
     }
   };
 
@@ -509,65 +527,92 @@ export default function EmployerJobs() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <Input
-              placeholder="כותרת"
-              value={form.title}
-              onChange={(e) =>
-                setForm({ ...form, title: e.target.value })
-              }
-            />
-
-            <Textarea
-              placeholder="תיאור"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-            />
-
-            <Input
-              placeholder="מיקום"
-              value={form.location}
-              onChange={(e) =>
-                setForm({ ...form, location: e.target.value })
-              }
-            />
-
-            <Input
-              type="number"
-              placeholder="שכר"
-              value={form.payment}
-              onChange={(e) =>
-                setForm({ ...form, payment: Number(e.target.value) })
-              }
-            />
-
-            <div className="flex justify-between items-center">
-              <Label>עבודה מרחוק</Label>
-              <Switch
-                checked={form.is_remote}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, is_remote: v })
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-gray-200 font-medium">כותרת המשרה</Label>
+              <Input
+                placeholder="הזיני כותרת למשרה"
+                value={form.title}
+                onChange={(e) =>
+                  setForm({ ...form, title: e.target.value })
                 }
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400"
               />
             </div>
 
-            <div className="flex justify-between items-center">
-              <Label>עם אנשים</Label>
-              <Switch
-                checked={form.is_job_with_people}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, is_job_with_people: v })
+            <div className="space-y-2">
+              <Label className="text-gray-200 font-medium">תיאור המשרה</Label>
+              <Textarea
+                placeholder="תארו את המשרה בפירוט..."
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
                 }
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400 min-h-[100px]"
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-gray-200 font-medium">מיקום</Label>
+                <Input
+                  placeholder="עיר או אזור"
+                  value={form.location}
+                  onChange={(e) =>
+                    setForm({ ...form, location: e.target.value })
+                  }
+                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-200 font-medium">שכר לשעה (₪)</Label>
+                <Input
+                  type="number"
+                  placeholder="35"
+                  value={form.payment}
+                  onChange={(e) =>
+                    setForm({ ...form, payment: Number(e.target.value) })
+                  }
+                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                  <Label className="text-gray-200 font-medium">עבודה מרחוק</Label>
+                </div>
+                <Switch
+                  checked={form.is_remote}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, is_remote: v })
+                  }
+                  className="data-[state=checked]:bg-cyan-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <Label className="text-gray-200 font-medium">עבודה עם אנשים</Label>
+                </div>
+                <Switch
+                  checked={form.is_job_with_people}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, is_job_with_people: v })
+                  }
+                  className="data-[state=checked]:bg-purple-500"
+                />
+              </div>
             </div>
 
             <button
               onClick={handleSave}
-              className="w-full bg-cyan-500 hover:bg-cyan-600 py-2 rounded-lg"
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-cyan-500/25"
             >
-              שמירה
+              {editingJob ? "עדכן משרה" : "פרסם משרה חדשה"}
             </button>
           </div>
         </DialogContent>

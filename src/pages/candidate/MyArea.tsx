@@ -32,7 +32,7 @@ export default function MyArea() {
       // או לבצע כמה קריאות במקביל:
       const [userRes, profileRes, matchesRes] = await Promise.all([
         api.get('/auth/me'),               // פרטי משתמש
-        api.get('/candidates/my-profile'),  // פרופיל המועמד
+        api.get('/Candidate/my-profile'),  // פרופיל המועמד
         api.get('/matches/accepted')       // רק התאמות סטטוס accepted
       ]);
 

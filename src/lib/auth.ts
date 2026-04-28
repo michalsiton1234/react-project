@@ -107,15 +107,13 @@
 // export const getUserRole = () => {
 //   const user = getUser();
 //   if (!user) return null;
-//   const role = user.role || user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-//   return role ? role.toLowerCase() : null;
-// };
-
 import { jwtDecode } from "jwt-decode";
 
 // 1. הגדרת המבנה של הטוקן
 interface UserToken {
   nameid?: string; 
+  sub?: string;
+  nameidentifier?: string;
   email?: string;
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"?: string;
   role?: string;
@@ -142,7 +140,7 @@ export const getUser = () => {
 
 export const getUserId = () => {
   const user = getUser();
-  return user?.sub || null;
+  return user?.nameid || user?.sub || user?.nameidentifier || null;
 };
 
 export const getUserRole = () => {
@@ -150,4 +148,20 @@ export const getUserRole = () => {
   if (!user) return null;
   const role = user.role || user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
   return role ? role.toLowerCase() : null;
+};
+
+export const getEmployerId = async (): Promise<number | null> => {
+  const userId = getUserId();
+  if (!userId) return null;
+  
+  try {
+    const response = await fetch(`https://localhost:7198/api/Employer?userId=${userId}`);
+    if (!response.ok) return null;
+    
+    const employers = await response.json();
+    const employer = employers.find((emp: any) => emp.userId === parseInt(userId));
+    return employer ? employer.id : null;
+  } catch {
+    return null;
+  }
 };

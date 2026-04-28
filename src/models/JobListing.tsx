@@ -49,5 +49,5 @@ export interface JobListing {
 
   isCatch: boolean;
   isRemote: boolean;
-  isJobWithPeople: boolean;
+  isJobWithPepole: boolean;
 }

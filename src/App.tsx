@@ -20,7 +20,7 @@ import Admin from './pages/Admin';
 
 const AuthenticatedApp = () => {
   // --- התיקון כאן: משתמשים במידע האמיתי מה-AuthContext ---
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
 
   // הדפסה לבדיקה ב-Console
   console.log("Current Auth Status:", { isAuthenticated, isLoading });
@@ -39,11 +39,17 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/register" element={<Setup />} />
       
-      {/* לוגין: אם כבר מחוברת - מעביר אוטומטית למשרות. אם לא - מציג לוגין */}
+      {/* לוגין: אם כבר מחובר - מעביר אוטומטית לפי תפקיד. אם לא - מציג לוגין */}
       <Route 
         path="/login" 
         
-        element={!isAuthenticated ? <Login /> : <Navigate to="/employer/jobs" replace />} 
+        element={
+          !isAuthenticated ? (
+            <Login />
+          ) : (
+            <Navigate to={user?.role === 'candidate' ? "/candidate/profile" : "/employer/jobs"} replace />
+          )
+        } 
       />
 
       {/* נתיב Setup מוגן */}
