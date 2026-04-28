@@ -19,9 +19,26 @@
 //   with_people: false,
 //   status: 'open',
 // };
+// export interface JobListing {
+//   employerId: number;
+//   categoryId: number;
+
+//   title: string;
+//   description: string;
+//   location: string;
+
+//   payment: number;
+//   requiredDate: string;
+
+//   isCatch: boolean;
+//   isRemote: boolean;
+//   isJobWithPepole: boolean;
+// }
 export interface JobListing {
+  id: number;
+
   employerId: number;
-  categoryId: number;
+  categoryId?: number;
 
   title: string;
   description: string;
@@ -32,10 +49,5 @@ export interface JobListing {
 
   isCatch: boolean;
   isRemote: boolean;
-  isJobWithPepole: boolean;
+  isJobWithPeople: boolean;
 }
-export const JobListingDefaults: Partial<JobListing> = {
-  isRemote: false,
-  isJobWithPepole: false,
-  isCatch: false,
-};
