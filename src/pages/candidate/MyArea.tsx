@@ -30,9 +30,19 @@ export default function MyArea() {
       
       // ב-C# שלך: מומלץ ליצור Endpoint אחד שמחזיר את כל נתוני ה"אזור האישי" 
       // או לבצע כמה קריאות במקביל:
-      const [userRes, profileRes, matchesRes] = await Promise.all([
+      let profileRes;
+      try {
+        profileRes = await api.get('/Candidate/my-profile');  // ניסיון ראשון
+      } catch (e1) {
+        try {
+          profileRes = await api.get('/candidate/my-profile');  // ניסיון שני
+        } catch (e2) {
+          profileRes = { data: null }; // אם אין פרופיל
+        }
+      }
+
+      const [userRes, matchesRes] = await Promise.all([
         api.get('/auth/me'),               // פרטי משתמש
-        api.get('/Candidate/my-profile'),  // פרופיל המועמד
         api.get('/matches/accepted')       // רק התאמות סטטוס accepted
       ]);
 

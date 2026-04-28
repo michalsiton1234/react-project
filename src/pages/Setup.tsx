@@ -51,11 +51,11 @@ export default function Setup() {
       if (selectedType === "Candidate") {
         try {
           const profileData = {
-            city: "",
+            City: "", // עם אות גדולה כמו שהקונטרולר מצפה
             max_distance: 10,
             min_hourly_rate: 30,
             activity: true,
-            level: "easy",
+            level: "easy", // כמחרוזת enum
             is_remote_only: false,
             with_people: true
           };

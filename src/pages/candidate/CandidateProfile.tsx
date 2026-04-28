@@ -15,7 +15,6 @@ const LEVELS = [
   { value: "hard", label: "קשה", emoji: "🔥", desc: "מקצועי" },
 ];
 
-
 export default function CandidateProfile() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -30,6 +29,7 @@ export default function CandidateProfile() {
     is_remote_only: false,
     with_people: true,
   });
+  const [profileId, setProfileId] = useState<number | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -45,32 +45,18 @@ export default function CandidateProfile() {
         return;
       }
       
-      // בסישארפ שלך - ניסיון נתיבים אלטרנטיביים לפרופיל
+      // ניסיון לקבל פרופיל של המשתמש המחובר
       let response;
       try {
-        response = await api.get('/candidate/profile/me');  // ניסיון ראשון - עם /me
+        response = await api.get('/Candidate/my-profile');  // הנתיב הנכון מהקונטרולר
       } catch (e1) {
-        console.log("ניסיון ראשון נכשל, מנסה נתיב שני...");
+        console.log("ניסיון ראשון נכשל, מנסה עם אותיות קטנות...");
         try {
-          response = await api.get('/api/candidate/profile/me');  // ניסיון שני - עם api ו-/me
+          response = await api.get('/candidate/my-profile');  // ניסיון שני - אותיות קטנות
         } catch (e2) {
-          console.log("ניסיון שני נכשל, מנסה נתיב שלישי...");
-          try {
-            response = await api.get('/Candidate/GetProfile');  // ניסיון שלישי - GetProfile
-          } catch (e3) {
-            console.log("ניסיון שלישי נכשל, מנסה נתיב רביעי...");
-            try {
-              response = await api.get('/candidate/GetProfile');  // ניסיון רביעי - candidate/GetProfile
-            } catch (e4) {
-              console.log("ניסיון רביעי נכשל, מנסה נתיב חמישי...");
-              try {
-                response = await api.get('/api/Candidate/GetProfile');  // ניסיון חמישי - עם api
-              } catch (e5) {
-                console.log("כל הניסיונות נכשלו, מנסה נתיב אחרון...");
-                response = await api.get('/candidate/profile');  // ניסיון אחרון - Candidate/profile
-              }
-            }
-          }
+          console.log("גם ניסיון שני נכשל, הפרופיל אולי לא קיים עדיין");
+          // אם אין פרופיל, זה בסדר - ניצור אחד חדש
+          response = null;
         }
       }
       console.log("DEBUG: Response from /Candidate/my-profile:", response);
@@ -86,6 +72,7 @@ export default function CandidateProfile() {
           is_remote_only: p.is_remote_only || false,
           with_people: p.with_people !== false
         });
+        setProfileId(p.id); // שמירת ה-ID של הפרופיל
       }
     } catch (error) {
       console.error("שגיאה בטעינת פרופיל:", error);
@@ -141,39 +128,50 @@ export default function CandidateProfile() {
     let saved = false;
     let lastError = null;
     
-    // הכנת נתונים למבנה שהשרת מצפה
+    // הכנת נתונים למבנה שהשרת מצפה - DTO ישיר
     const requestData = {
-      candidateDto: {
-        City: form.city, // שינוי ל-City עם אות גדולה
-        max_distance: form.max_distance,
-        min_hourly_rate: form.min_hourly_rate,
-        activity: form.activity,
-        level: form.level, // שליחת level כמחרוזת enum
-        is_remote_only: form.is_remote_only,
-        with_people: form.with_people
-      }
+      Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
+      UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
+      City: form.city,
+      MaxDistance: form.max_distance,
+      MinHourlyRate: form.min_hourly_rate,
+      Activity: form.activity,
+      Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
+      LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
+      IsRemoteOnly: form.is_remote_only,
+      WithPeople: form.with_people
     };
     
-    // ניסיון 1: PUT לנתיב הנכון שהשרת מצפה לו
+    // לוגיקה משופרת: תמיד מנסה POST קודם, אם זה נכשל עם 409 (conflict) אז מעדכן
     try {
-      console.log("ניסיון 1: PUT ל-/Candidate/profile עם מבנה נכון");
+      console.log("מנסה ליצור/לעדכן פרופיל");
       console.log("נתונים מעוצבים:", requestData);
-      const response = await api.put('/Candidate/profile', requestData);
-      console.log("✅ PUT הצליח:", response.status, response.data);
+      const response = await api.post('/Candidate/profile', requestData);
+      console.log("✅ POST הצליח (יצירה או עדכון):", response.status, response.data);
       saved = true;
+      setProfileId(response.data.id); // שמירת ה-ID מהתגובה
     } catch (e1) {
-      console.log("❌ PUT נכשל:", e1.response?.status, e1.response?.data);
-      lastError = e1;
+      console.log("❌ POST נכשל:", e1.response?.status, e1.response?.data);
+      console.log("=== פרטי השגיאה המלאים ===");
+      console.log("Status:", e1.response?.status);
+      console.log("Status Text:", e1.response?.statusText);
+      console.log("Data:", JSON.stringify(e1.response?.data, null, 2));
+      console.log("Headers:", e1.response?.headers);
+      console.log("URL:", e1.config?.url);
       
-      // ניסיון 2: PUT עם אותיות קטנות
-      try {
-        console.log("ניסיון 2: PUT ל-/candidate/profile עם מבנה נכון");
-        const response = await api.put('/candidate/profile', requestData);
-        console.log("✅ PUT עם אותיות קטנות הצליח:", response.status, response.data);
-        saved = true;
-      } catch (e2) {
-        console.log("❌ PUT עם אותיות קטנות נכשל:", e2.response?.status, e2.response?.data);
-        lastError = e2;
+      // אם זו שגיאת conflict (הפרופיל כבר קיים), ננסה PUT
+      if (e1.response?.status === 409 && profileId) {
+        try {
+          console.log("מנסה לעדכן פרופיל קיים, ID:", profileId);
+          const response = await api.put(`/Candidate/${profileId}`, requestData);
+          console.log("✅ PUT הצליח:", response.status, response.data);
+          saved = true;
+        } catch (e2) {
+          console.log("❌ PUT גם נכשל:", e2.response?.status, e2.response?.data);
+          lastError = e2;
+        }
+      } else {
+        lastError = e1;
       }
     }
     
@@ -188,33 +186,52 @@ export default function CandidateProfile() {
       console.error("=== כל הניסיונות נכשלו ===");
       console.error("שגיאה אחרונה:", lastError);
       
-      // ניסיון עם נתונים מינימליים
+      // ניסיון עם נתונים מינימליים - DTO ישיר
       console.log("=== מנסה עם נתונים מינימליים ===");
       const minimalData = {
-        candidateDto: {
-          City: "תל אביב", // שימוש City עם אות גדולה
-          max_distance: 10,
-          min_hourly_rate: 30,
-          activity: true,
-          level: "easy", // מחרוזת enum תקינה
-          is_remote_only: false,
-          with_people: true
-        }
+        Id: 0, // יוגדר אוטומטית
+        UserId: 0, // יוגדר אוטומטית
+        City: "תל אביב",
+        MaxDistance: 10,
+        MinHourlyRate: 30,
+        Activity: true,
+        Level: "Easy", // enum תקין
+        LevelValue: 0, // easy = 0
+        IsRemoteOnly: false,
+        WithPeople: true
       };
       
-      try {
-        console.log("ניסיון עם נתונים מינימליים:", minimalData);
-        const response = await api.put('/Candidate/profile', minimalData);
-        console.log("✅ ניסיון מינימלי הצליח:", response.status);
-        toast.success("הפרופיל נשמר עם נתונים מינימליים!");
-        loadData();
-        setSaving(false);
-        setTimeout(() => {
-          navigate('/candidate/dashboard');
-        }, 1500);
-        return;
-      } catch (minimalError) {
-        console.log("❌ גם ניסיון מינימלי נכשל:", minimalError.response?.status, minimalError.response?.data);
+      // אותה לוגיקה כמו בשמירה רגילה
+      if (profileId) {
+        try {
+          console.log("מנסה לעדכן פרופיל קיים עם נתונים מינימליים, ID:", profileId);
+          const response = await api.put(`/Candidate/${profileId}`, minimalData);
+          console.log("✅ ניסיון מינימלי PUT הצליח:", response.status);
+          toast.success("הפרופיל נשמר עם נתונים מינימליים!");
+          loadData();
+          setSaving(false);
+          setTimeout(() => {
+            navigate('/candidate/dashboard');
+          }, 1500);
+          return;
+        } catch (minimalError) {
+          console.log("❌ ניסיון מינימלי PUT נכשל:", minimalError.response?.status, minimalError.response?.data);
+        }
+      } else {
+        try {
+          console.log("יוצר פרופיל חדש עם נתונים מינימליים");
+          const response = await api.post('/Candidate/profile', minimalData);
+          console.log("✅ ניסיון מינימלי POST הצליח:", response.status);
+          toast.success("הפרופיל נשמר עם נתונים מינימליים!");
+          loadData();
+          setSaving(false);
+          setTimeout(() => {
+            navigate('/candidate/dashboard');
+          }, 1500);
+          return;
+        } catch (minimalError) {
+          console.log("❌ ניסיון מינימלי POST נכשל:", minimalError.response?.status, minimalError.response?.data);
+        }
       }
       
       // הצגת שגיאה מפורטת למשתמש
