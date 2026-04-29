@@ -24,22 +24,26 @@ export default function Register() {
 
     try {
       // שליחת נתוני הרשמה לשרת הסישארפ
-      const res = await api.post("/auth/register", formData);
+      const res = await api.post("/User/register", formData, {
+        params: {
+          password: formData.password,
+          userType: "candidate" // ברירת מחדל - רישום כמועמד
+        }
+      });
+      
       localStorage.setItem("token", res.data.token); // הוסיפי שורה זו כאן
 
-      // התחברות אוטומטית לאחר הרשמה הוספתי את זה .........
+      // התחברות אוטומטית לאחר הרשמה הוספתי את זה .....
       login(res.data.token, res.data.user);
       
-      toast({ title: "נרשמת בהצלחה!", description: "עכשיו נגדיר את סוג החשבון" });
+      toast.success("נרשמת בהצלחה! עכשיו נגדיר את סוג החשבון");
       
       // אחרי הרשמה תמיד הולכים ל-Setup לבחור אם אני מועמד או מעסיק
       navigate("/setup");
-    } catch (err) {
-      toast({ 
-        title: "שגיאה בהרשמה", 
-        description: "ייתכן שהמייל כבר קיים במערכת", 
-        variant: "destructive" 
-      });
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      const errorMsg = err.response?.data || "ייתכן שהמייל כבר קיים במערכת";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
