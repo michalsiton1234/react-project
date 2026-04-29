@@ -33,10 +33,6 @@
 //       localStorage.removeItem("token");
 //       window.location.href = "/login";
 //     }
-
-//     return Promise.reject(error);
-//   }
-// );
 import axios from 'axios';
 
 // 1. ודאי שהפורט (5035) הוא באמת הפורט של ה-C# שלך כרגע

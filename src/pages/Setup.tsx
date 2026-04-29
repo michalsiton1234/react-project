@@ -27,13 +27,13 @@ export default function Setup() {
     
     setLoading(true);
     try {
-      // 🔴 יצירת האובייקט בהתאמה מלאה ל-UserDto ב-C#
+      // יצירת האובייקט בהתאמה מלאה ל-UserDto ב-C#
       const userDto = {
-        Id: 0,                   // 🔴 נוסף כי ב-C# ה-Id הוא int (חובה)
-        Name: fullName,          // 🔴 שינוי מ-fullName ל-Name כדי להתאים ל-DTO
-        Email: email,            // 🔴 אות גדולה בתחילה (PascalCase)
-        UserType: selectedType,  // 🔴 שליחת ה-Role כפי שמופיע ב-DTO
-        IsEnable: true           // 🔴 נוסף כי ב-C# ה-bool הוא חובה
+        Id: 0,                   // נוסף כי ב-C# ה-Id הוא int (חובה)
+        Name: fullName,          // שינוי מ-fullName ל-Name כדי להתאים ל-DTO
+        Email: email,            // אות גדולה בתחילה (PascalCase)
+        UserType: selectedType,  // שליחת ה-Role כפי שמופיע ב-DTO
+        IsEnable: true           // נוסף כי ב-C# ה-bool הוא חובה
       };
 
       let token: string;
