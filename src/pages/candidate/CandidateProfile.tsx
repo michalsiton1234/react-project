@@ -48,6 +48,7 @@ export default function CandidateProfile() {
       // ניסיון לקבל פרופיל של המשתמש המחובר
       let response;
       try {
+        ///candidate/profile
         response = await api.get('/Candidate/my-profile');  // הנתיב הנכון מהקונטרולר
       } catch (e1) {
         console.log("ניסיון ראשון נכשל, מנסה עם אותיות קטנות...");
@@ -113,7 +114,15 @@ export default function CandidateProfile() {
   };
 
   const handleSave = async () => {
-    if (!form.city) return;
+    console.log("=== בדיקת תקינות עיר ===");
+    console.log("ערך עיר:", form.city);
+    console.log("אורך:", form.city?.length);
+    console.log("Trim:", form.city?.trim());
+    
+    if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
+      setError("אנא הזן שם עיר תקין (לפחות 3 תווים)");
+      return;
+    }
     setSaving(true);
     setError(""); // נקה את הודעת שגיאה קודמת
     
@@ -128,18 +137,20 @@ export default function CandidateProfile() {
     let saved = false;
     let lastError = null;
     
-    // הכנת נתונים למבנה שהשרת מצפה - DTO ישיר
+    // הכנת נתונים למבנה שהשרת באמת מצפה - עטיפה ב-candidateDto
     const requestData = {
-      Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
-      UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
-      City: form.city,
-      MaxDistance: form.max_distance,
-      MinHourlyRate: form.min_hourly_rate,
-      Activity: form.activity,
-      Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
-      LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
-      IsRemoteOnly: form.is_remote_only,
-      WithPeople: form.with_people
+      candidateDto: {
+        Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
+        UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
+        City: form.city,
+        MaxDistance: form.max_distance,
+        MinHourlyRate: form.min_hourly_rate,
+        Activity: form.activity,
+        Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
+        LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
+        IsRemoteOnly: form.is_remote_only,
+        WithPeople: form.with_people
+      }
     };
     
     // לוגיקה משופרת: תמיד מנסה POST קודם, אם זה נכשל עם 409 (conflict) אז מעדכן
@@ -186,24 +197,36 @@ export default function CandidateProfile() {
       console.error("=== כל הניסיונות נכשלו ===");
       console.error("שגיאה אחרונה:", lastError);
       
-      // ניסיון עם נתונים מינימליים - DTO ישיר
+      // ניסיון עם נתונים מינימליים - DTO ישיר עם הנתונים שהמשתמש הזין
       console.log("=== מנסה עם נתונים מינימליים ===");
+      
+      // בדיקת תקינות נוספת לפני יצירת ה-minimalData
+      if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
+        console.error("עיר לא תקינה גם בניסיון מינימלי, לא ניתן להמשיך");
+        setError("עיר לא תקינה. אנא הזן שם עיר אמיתי.");
+        setSaving(false);
+        return;
+      }
+      
       const minimalData = {
-        Id: 0, // יוגדר אוטומטית
-        UserId: 0, // יוגדר אוטומטית
-        City: "תל אביב",
-        MaxDistance: 10,
-        MinHourlyRate: 30,
-        Activity: true,
-        Level: "Easy", // enum תקין
-        LevelValue: 0, // easy = 0
-        IsRemoteOnly: false,
-        WithPeople: true
+        candidateDto: {
+          Id: 0, // יוגדר אוטומטית
+          UserId: 0, // יוגדר אוטומטית
+          City: form.city.trim(), // ללא fallback - חייב להיות תקין
+          MaxDistance: form.max_distance || 10,
+          MinHourlyRate: form.min_hourly_rate || 30,
+          Activity: form.activity !== false,
+          Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
+          LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
+          IsRemoteOnly: form.is_remote_only || false,
+          WithPeople: form.with_people !== false
+        }
       };
       
       // אותה לוגיקה כמו בשמירה רגילה
       if (profileId) {
         try {
+          console.log("מנסה לעדכן פרופיל קיים, ID:", profileId);
           console.log("מנסה לעדכן פרופיל קיים עם נתונים מינימליים, ID:", profileId);
           const response = await api.put(`/Candidate/${profileId}`, minimalData);
           console.log("✅ ניסיון מינימלי PUT הצליח:", response.status);
