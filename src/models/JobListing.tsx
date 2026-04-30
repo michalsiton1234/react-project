@@ -39,6 +39,7 @@ export interface JobListing {
 
   employerId: number;
   categoryId?: number;
+  categoryIds?: number[];
 
   title: string;
   description: string;
@@ -46,6 +47,8 @@ export interface JobListing {
 
   payment: number;
   requiredDate: string;
+  level?: string;
+  status?: 'open' | 'closed' | 'filled';
 
   isCatch: boolean;
   isRemote: boolean;

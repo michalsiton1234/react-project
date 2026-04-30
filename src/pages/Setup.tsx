@@ -57,7 +57,8 @@ export default function Setup() {
             activity: true,
             level: "easy", // כמחרוזת enum
             is_remote_only: false,
-            with_people: true
+            with_people: true,
+            categoryId: 3 // ברירת מחדל: קטגוריה 3
           };
           
           await api.post('/Candidate/profile', profileData);
@@ -74,7 +75,7 @@ export default function Setup() {
         if (selectedType === "Candidate") {
           navigate("/candidate/profile");
         } else {
-          navigate("/employer/jobs");
+          navigate("/employer/matches");
         }
       }, 100); // המתנה קצרה כדי לתת ל-AuthContext להתעדכן
       toast.success("נרשמת בהצלחה! ✨");

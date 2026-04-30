@@ -47,7 +47,7 @@ const AuthenticatedApp = () => {
           !isAuthenticated ? (
             <Login />
           ) : (
-            <Navigate to={user?.role === 'candidate' ? "/candidate/profile" : "/employer/jobs"} replace />
+            <Navigate to={user?.role === 'candidate' ? "/candidate/profile" : "/employer/matches"} replace />
           )
         } 
       />

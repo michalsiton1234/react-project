@@ -115,7 +115,11 @@ interface UserToken {
   sub?: string;
   nameidentifier?: string;
   email?: string;
+  full_name?: string;
+  name?: string;
+  given_name?: string;
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"?: string;
+  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"?: string;
   role?: string;
 }
 
@@ -125,6 +129,10 @@ export const saveToken = (token: string) => localStorage.setItem("token", token)
 export const getToken = (): string | null => localStorage.getItem("token");
 
 export const removeToken = () => localStorage.removeItem("token");
+
+export const logout = () => {
+  localStorage.removeItem("token");
+};
 
 // 3. פונקציות שליפת מידע מהטוקן
 export const getUser = () => {
@@ -148,6 +156,16 @@ export const getUserRole = () => {
   if (!user) return null;
   const role = user.role || user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
   return role ? role.toLowerCase() : null;
+};
+
+export const getUserName = () => {
+  const user = getUser();
+  if (!user) return null;
+  return user.full_name || 
+         user.name || 
+         user.given_name || 
+         user["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+         null;
 };
 
 export const getEmployerId = async (): Promise<number | null> => {

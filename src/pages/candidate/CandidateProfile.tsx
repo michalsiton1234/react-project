@@ -28,15 +28,44 @@ export default function CandidateProfile() {
     level: "easy",
     is_remote_only: false,
     with_people: true,
+    categoryIds: [] as number[],
   });
   const [profileId, setProfileId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<{id: number, name: string, icon: string}[]>([]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadData();
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const res = await api.get("/Category");
+      const categoryIcons: {[key: string]: string} = {
+        "ביביסיטר": "👶",
+        "משלוחים": "📦", 
+        "ניקיון": "🧹",
+        "קלדנות": "⌨️",
+        "סטודנט": "📚",
+        "מרחוק": "🏠",
+        "אחר": "✨",
+        "שירות": "🎧"
+      };
+      const mappedCategories = res.data.map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        icon: categoryIcons[cat.name] || "📋"
+      }));
+      setCategories(mappedCategories);
+    } catch (err) {
+      console.error("שגיאה בטעינת קטגוריות:", err);
+    }
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // בדיקת הרשאה לפני קריאה ל-API
       const token = localStorage.getItem('token');
       if (!token) {
@@ -44,7 +73,7 @@ export default function CandidateProfile() {
         window.location.href = "/login";
         return;
       }
-      
+
       // ניסיון לקבל פרופיל של המשתמש המחובר
       let response;
       try {
@@ -64,6 +93,7 @@ export default function CandidateProfile() {
       if (response.data) {
         const p = response.data;
         console.log("Profile data received:", p);
+        const loadedCategoryIds = p.categoryIds || p.categoryId || p.CategoryId || p.CategoryIds || [];
         setForm({
           city: p.City || p.city || "", // תמיכה בין City ו-city
           max_distance: p.max_distance || 10,
@@ -71,13 +101,14 @@ export default function CandidateProfile() {
           activity: p.activity !== false,
           level: p.level || "easy",
           is_remote_only: p.is_remote_only || false,
-          with_people: p.with_people !== false
+          with_people: p.with_people !== false,
+          categoryIds: Array.isArray(loadedCategoryIds) ? loadedCategoryIds : [loadedCategoryIds]
         });
         setProfileId(p.id); // שמירת ה-ID של הפרופיל
       }
     } catch (error) {
       console.error("שגיאה בטעינת פרופיל:", error);
-      
+
       // פירוט מלא של השגיאה
       if (error.response) {
         console.error("שגיאת שרת:", {
@@ -86,7 +117,7 @@ export default function CandidateProfile() {
           data: error.response.data,
           url: error.config?.url
         });
-        
+
         // הודעה למשתמש לפי סוג השגיאה
         if (error.response.status === 401) {
           setError("פג תוקף ההתחברות. אנא התחברי מחדש.");
@@ -118,41 +149,51 @@ export default function CandidateProfile() {
     console.log("ערך עיר:", form.city);
     console.log("אורך:", form.city?.length);
     console.log("Trim:", form.city?.trim());
-    
+
     if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
       setError("אנא הזן שם עיר תקין (לפחות 3 תווים)");
       return;
     }
     setSaving(true);
     setError(""); // נקה את הודעת שגיאה קודמת
-    
+
     console.log("=== מתחיל שמירת פרופיל ===");
     console.log("נתונים שנשלחים:", form);
-    
+
     // בדיקת תקינות הטוקן
     const token = localStorage.getItem('token');
     console.log("טוקן קיים:", !!token);
     console.log("אורך טוקן:", token?.length || 0);
-    
+
     let saved = false;
     let lastError = null;
+
+    // הכנת נתונים ישירות - בלי עטיפה
+    const levelValue = form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2;
+    // נשלח רק את הקטגוריה הראשונה כי הבקאנד תומך רק בקטגוריה אחת
+    const firstCategoryId = form.categoryIds?.[0];
     
-    // הכנת נתונים למבנה שהשרת באמת מצפה - עטיפה ב-candidateDto
+    // בדיקה שבחרת קטגוריה
+    if (!firstCategoryId) {
+      toast.error("יש לבחור לפחות קטגוריה אחת");
+      setSaving(false);
+      return;
+    }
+    
     const requestData = {
-      candidateDto: {
-        Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
-        UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
-        City: form.city,
-        MaxDistance: form.max_distance,
-        MinHourlyRate: form.min_hourly_rate,
-        Activity: form.activity,
-        Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
-        LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
-        IsRemoteOnly: form.is_remote_only,
-        WithPeople: form.with_people
-      }
+      Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
+      UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
+      CategoryId: firstCategoryId, // קטגוריה אחת בלבד - הבקאנד לא תומך במערך
+      City: form.city,
+      MaxDistance: form.max_distance,
+      MinHourlyRate: form.min_hourly_rate,
+      Activity: form.activity,
+      Level: levelValue, // שולחים כמספר 0/1/2
+      LevelValue: levelValue,
+      IsRemoteOnly: form.is_remote_only,
+      WithPeople: form.with_people
     };
-    
+
     // לוגיקה משופרת: תמיד מנסה POST קודם, אם זה נכשל עם 409 (conflict) אז מעדכן
     try {
       console.log("מנסה ליצור/לעדכן פרופיל");
@@ -169,7 +210,7 @@ export default function CandidateProfile() {
       console.log("Data:", JSON.stringify(e1.response?.data, null, 2));
       console.log("Headers:", e1.response?.headers);
       console.log("URL:", e1.config?.url);
-      
+
       // אם זו שגיאת conflict (הפרופיל כבר קיים), ננסה PUT
       if (e1.response?.status === 409 && profileId) {
         try {
@@ -185,21 +226,21 @@ export default function CandidateProfile() {
         lastError = e1;
       }
     }
-    
+
     if (saved) {
       toast.success("הפרופיל נשמר!");
       loadData();
-      // Navigate to candidate dashboard or jobs page after successful save
+      // Navigate to candidate my-area page after successful save
       setTimeout(() => {
-        navigate('/candidate/dashboard');
+        navigate('/candidate/my-area');
       }, 1500);
     } else {
       console.error("=== כל הניסיונות נכשלו ===");
       console.error("שגיאה אחרונה:", lastError);
-      
+
       // ניסיון עם נתונים מינימליים - DTO ישיר עם הנתונים שהמשתמש הזין
       console.log("=== מנסה עם נתונים מינימליים ===");
-      
+
       // בדיקת תקינות נוספת לפני יצירת ה-minimalData
       if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
         console.error("עיר לא תקינה גם בניסיון מינימלי, לא ניתן להמשיך");
@@ -207,22 +248,30 @@ export default function CandidateProfile() {
         setSaving(false);
         return;
       }
+
+      const levelVal = form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2;
+      const firstCatId = form.categoryIds?.[0];
+      
+      if (!firstCatId) {
+        toast.error("יש לבחור לפחות קטגוריה אחת");
+        setSaving(false);
+        return;
+      }
       
       const minimalData = {
-        candidateDto: {
-          Id: 0, // יוגדר אוטומטית
-          UserId: 0, // יוגדר אוטומטית
-          City: form.city.trim(), // ללא fallback - חייב להיות תקין
-          MaxDistance: form.max_distance || 10,
-          MinHourlyRate: form.min_hourly_rate || 30,
-          Activity: form.activity !== false,
-          Level: form.level.charAt(0).toUpperCase() + form.level.slice(1), // Easy/Medium/Hard
-          LevelValue: form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2,
-          IsRemoteOnly: form.is_remote_only || false,
-          WithPeople: form.with_people !== false
-        }
+        Id: 0, // יוגדר אוטומטית
+        UserId: 0, // יוגדר אוטומטית
+        CategoryId: firstCatId, // קטגוריה אחת בלבד
+        City: form.city.trim(), // ללא fallback - חייב להיות תקין
+        MaxDistance: form.max_distance || 10,
+        MinHourlyRate: form.min_hourly_rate || 30,
+        Activity: form.activity !== false,
+        Level: levelVal, // שולחים כמספר 0/1/2
+        LevelValue: levelVal,
+        IsRemoteOnly: form.is_remote_only || false,
+        WithPeople: form.with_people !== false
       };
-      
+
       // אותה לוגיקה כמו בשמירה רגילה
       if (profileId) {
         try {
@@ -234,7 +283,7 @@ export default function CandidateProfile() {
           loadData();
           setSaving(false);
           setTimeout(() => {
-            navigate('/candidate/dashboard');
+            navigate('/candidate/my-area');
           }, 1500);
           return;
         } catch (minimalError) {
@@ -249,19 +298,19 @@ export default function CandidateProfile() {
           loadData();
           setSaving(false);
           setTimeout(() => {
-            navigate('/candidate/dashboard');
+            navigate('/candidate/my-area');
           }, 1500);
           return;
         } catch (minimalError) {
           console.log("❌ ניסיון מינימלי POST נכשל:", minimalError.response?.status, minimalError.response?.data);
         }
       }
-      
+
       // הצגת שגיאה מפורטת למשתמש
       if (lastError?.response) {
         const status = lastError.response.status;
         const data = lastError.response.data;
-        
+
         if (status === 400) {
           setError(`שגיאת תקינות: ${JSON.stringify(data) || "נתונים לא תקינים"}`);
         } else if (status === 401) {
@@ -280,10 +329,10 @@ export default function CandidateProfile() {
       } else {
         setError("לא ניתן להתחבר לשרת לשמירה");
       }
-      
+
       toast.error("השמירה נכשלה");
     }
-    
+
     setSaving(false);
   };
 
@@ -393,12 +442,68 @@ export default function CandidateProfile() {
             </div>
           </div>
 
+          {/* קטגוריות תחומי עניין - מולטי סלקט */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-cyan-400">תחומי עניין</Label>
+              <span className="text-xs text-white/50">
+                נבחר {form.categoryIds?.length || 0}/3
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {categories.map((cat) => {
+                const isSelected = form.categoryIds?.includes(cat.id) || false;
+                const canSelect = isSelected || (form.categoryIds?.length || 0) < 3;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    disabled={!canSelect}
+                    onClick={() => {
+                      const currentIds = form.categoryIds || [];
+                      if (isSelected) {
+                        // הסרת קטגוריה (לא מאפשר להסיר את האחרונה)
+                        if (currentIds.length > 1) {
+                          setForm({ ...form, categoryIds: currentIds.filter(id => id !== cat.id) });
+                        }
+                      } else {
+                        // הוספת קטגוריה
+                        setForm({ ...form, categoryIds: [...currentIds, cat.id] });
+                      }
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-right ${
+                      isSelected
+                        ? 'bg-cyan-500/20 border-cyan-400 text-white'
+                        : canSelect
+                          ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                          : 'bg-white/5 border-white/5 text-white/30 cursor-not-allowed'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      isSelected ? 'border-cyan-400' : 'border-white/30'
+                    }`}>
+                      {isSelected && (
+                        <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full"></span>
+                      )}
+                    </span>
+                    <span className="text-lg">{cat.icon}</span>
+                    <span className="text-sm">{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Switches */}
           <div className="space-y-4 mb-6">
+            {/* סטטוס - שונה מפעילות */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Zap className="w-5 h-5 text-cyan-400" />
-                <Label className="text-white">פעילות</Label>
+                <div>
+                  <Label className="text-white block">סטטוס</Label>
+                  <span className="text-xs text-white/50">פעיל - מחפש עבודה</span>
+                </div>
               </div>
               <Switch
                 checked={form.activity}

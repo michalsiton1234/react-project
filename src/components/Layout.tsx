@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 
 const Layout: React.FC = () => {
   return (
-    <div className="layout-container">
+    <div className="min-h-screen bg-slate-900 text-white">
       {/* כאן בדרך כלל שמים Navbar או Sidebar */}
       <header>
         <nav>

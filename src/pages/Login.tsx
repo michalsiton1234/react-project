@@ -42,8 +42,15 @@ export default function Login() {
 
         toast.success("התחברת בהצלחה! ✨");
 
-        // הניווט האוטומטי יתבצע מה-App.tsx לפי התפקיד של המשתמש
-        // אין צורך לניווט ידני כאן
+        // ניווט לפי תפקיד
+        const role = getUserRole();
+        if (role === "employer") {
+          navigate("/employer/matches");
+        } else if (role === "candidate") {
+          navigate("/candidate/profile");
+        } else {
+          navigate("/");
+        }
       } else {
         console.error("3. שגיאה: השרת לא החזיר טוקן בפורמט צפוי", res.data);
         toast.error("שגיאה בקבלת נתונים מהשרת");
