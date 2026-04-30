@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/api/apiClient'; // ה-Axios שיצרנו בתמונה
 import type { JobListing } from '@/models/JobListing'; // המודל הקצר שבנינו
-
 const JobsPage = () => {
   // 1. ניהול הסטייט (מצב) של העמוד
   const [jobs, setJobs] = useState<JobListing[]>([]);
@@ -14,7 +13,7 @@ const JobsPage = () => {
       try {
         setLoading(true);
         // פנייה ל-Controller שלך בסישארפ
-        const response = await api.get('/jobs'); 
+        const response = await api.get('/jobs');
         setJobs(response.data);
       } catch (error) {
         console.error("שגיאה בטעינת המשרות:", error);
@@ -31,7 +30,7 @@ const JobsPage = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">רשימת משרות מהסישארפ שלי</h1>
-      
+
       {/* כאן את מדביקה את העיצוב של ה-Cards/Table שהעתקת מ-Base44 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {jobs.map((job) => (
