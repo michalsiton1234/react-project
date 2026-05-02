@@ -35,6 +35,7 @@ export const employerAPI = {
     return response.data;
   },
 
+
   // POST: api/Employer - יצירת מעסיק חדש
   create: async (employerData: Employer) => {
     const response = await api.post<Employer>("/Employer", employerData);
