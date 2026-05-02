@@ -18,7 +18,6 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { getEmployerId } from "@/lib/auth";
 import { toast } from "sonner";
 import type { JobListing } from "@/models/JobListing";
 import type { CandidateProfile } from "@/models/CandidateProfile";
@@ -42,13 +41,8 @@ export default function EmployerMatches() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const employerId = await getEmployerId();
-      if (!employerId) {
-        toast.error("לא נמצא EmployerId תקין");
-        return;
-      }
       const [jobsRes, candidatesRes, matchesRes] = await Promise.all([
-        api.get(`/JobListing/getByEmp/${employerId}`),
+        api.get("/employers/my-jobs"),
         api.get("/candidates/active"),
         api.get("/matches/my-sent-offers"),
       ]);
