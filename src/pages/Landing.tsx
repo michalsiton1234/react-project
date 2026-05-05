@@ -158,7 +158,7 @@ export default function Landing() {
       <section id="features" className="py-32 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feat, i) => (
+            {features.map((feat) => (
               <div key={feat.title} className="p-8 rounded-3xl bg-white/3 border border-white/5 relative overflow-hidden group">
                 <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${feat.gradient} blur-[60px] opacity-20`} />
                 <feat.icon className="w-10 h-10 text-cyan-400 mb-6" />

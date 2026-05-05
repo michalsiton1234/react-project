@@ -49,28 +49,43 @@ export const api = axios.create({
 // Request interceptor - הוספת הטוקן
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  console.log('🔐 API Request - Token exists:', !!token);
+  console.log('🔐 API Request - URL:', config.url);
+  console.log('🔐 API Request - Method:', config.method?.toUpperCase());
 
   if (token) {
     // בגרסאות חדשות של Axios, זו הדרך הבטוחה להוסיף Headers
     config.headers.set('Authorization', `Bearer ${token}`);
+    console.log('🔐 API Request - Authorization header added');
+  } else {
+    console.warn('🔐 API Request - No token found!');
   }
 
   return config;
 }, (error) => {
+  console.error('🔐 API Request Error:', error);
   return Promise.reject(error);
 });
 
 // Response interceptor - טיפול בשגיאות
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ API Response Success:', {
+      status: response.status,
+      url: response.config?.url,
+      dataLength: Array.isArray(response.data) ? response.data.length : 'N/A'
+    });
+    return response;
+  },
   (error) => {
     // אם את רוצה להפסיק לעצור כל פעם, תמחקי את ה-debugger הזה
     // debugger; 
 
-    console.error("API Error Details:", {
+    console.error("❌ API Error Details:", {
       status: error.response?.status,
       data: error.response?.data,
-      url: error.config?.url
+      url: error.config?.url,
+      message: error.message
     });
 
     if (error.response?.status === 401) {

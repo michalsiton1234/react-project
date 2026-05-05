@@ -1,11 +1,14 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { api } from "@/api/apiClient";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, Mail, MapPin, CheckCircle, Briefcase, Star, ArrowLeft, Zap, Bell, ClipboardCheck, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { getUserName } from "@/lib/auth";
+import { fetchMatches, updateMatchStatus, runAlgorithmForMe } from "@/store/matchSlice";
+import type { RootState } from "@/store";
 
 import type { CandidateProfile } from "@/models/CandidateProfile";
 import type { Match } from "@/models/Match";
@@ -18,15 +21,75 @@ interface UserData {
 type TabType = "offers" | "accepted" | "all";
 
 export default function MyArea() {
-  const [user, setUser] = useState<UserData | null>(null);
+  const dispatch = useDispatch();
+  const { items: allMatches, loading: matchesLoading } = useSelector((state: RootState) => state.matches);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
-  const [offers, setOffers] = useState<Match[]>([]);
-  const [acceptedMatches, setAcceptedMatches] = useState<Match[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>("offers");
   const [loading, setLoading] = useState(true);
+  const [offersCount, setOffersCount] = useState(0);
+  const [acceptedCount, setAcceptedCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabType>("offers");
   const navigate = useNavigate();
 
-  useEffect(() => { loadData(); }, []);
+  // סינון התאמות לפי userId וסטטוס
+  console.log('🔍 MyArea - Debug Info:');
+  console.log('🔍 All matches:', allMatches);
+  console.log('🔍 User:', user);
+  console.log('🔍 User ID:', user?.id, 'Type:', typeof user?.id);
+  console.log('🔍 Profile:', profile);
+  console.log('🔍 Profile ID:', profile?.id, 'Type:', typeof profile?.id);
+  
+  // ה-Backend כבר מסנן לפי המשתמש המחובר, אז רק מסננים לפי סטטוס
+  const offers = allMatches.filter(match => {
+    console.log('🔍 Filtering offer:', match);
+    console.log('🔍 Match status:', match.status, 'Type:', typeof match.status);
+    console.log('🔍 Status check (pending):', match.status === 'pending');
+    console.log('🔍 Status check (pending) - string:', match.status === 'pending');
+    console.log('🔍 Status check (pending) - null/undefined:', match.status == 'pending');
+    return match.status === 'pending';
+  });
+  
+  console.log('🔍 Filtered offers:', offers);
+  console.log('🔍 Total matches:', allMatches.length);
+  console.log('🔍 Offers count:', offers.length);
+  console.log('🔍 All matches with statuses:', allMatches.map(m => ({ id: m.id, status: m.status })));
+  
+  const acceptedMatches = allMatches.filter(match => {
+    console.log('🔍 Filtering accepted:', match);
+    console.log('🔍 Match status:', match.status, 'Type:', typeof match.status);
+    console.log('🔍 Status check (accepted):', match.status === 'accepted');
+    return match.status === 'accepted';
+  });
+  
+  console.log('🔍 Filtered accepted matches:', acceptedMatches);
+
+  useEffect(() => { 
+    loadData(); 
+    dispatch(fetchMatches());
+  }, [dispatch]);
+
+  // useEffect להפעלת אלגוריתם אוטומטית אם אין מאצ'ים
+  useEffect(() => {
+    if (!loading && allMatches.length === 0) {
+      console.log('🤖 No matches found, running algorithm automatically...');
+      dispatch(runAlgorithmForMe());
+    }
+  }, [loading, allMatches.length, dispatch]);
+
+  // useEffect לחישוב מונים מדויק כשהנתונים משתנים
+  useEffect(() => {
+    console.log('🔢 Recalculating counters...');
+    console.log('🔢 All matches:', allMatches);
+    
+    const pendingCount = allMatches.filter(match => match.status === 'pending').length;
+    const acceptedCount = allMatches.filter(match => match.status === 'accepted').length;
+    
+    console.log('🔢 Pending count:', pendingCount);
+    console.log('🔢 Accepted count:', acceptedCount);
+    
+    setOffersCount(pendingCount);
+    setAcceptedCount(acceptedCount);
+  }, [allMatches]);
 
   const loadData = async () => {
     try {
@@ -44,22 +107,7 @@ export default function MyArea() {
         }
       }
 
-      // טעינת הצעות והתקבלות
-      let offersRes = { data: [] };
-      let acceptedRes = { data: [] };
-      try {
-        [offersRes, acceptedRes] = await Promise.all([
-          api.get('/matches/my-offers'),
-          api.get('/matches/accepted')
-        ]);
-      } catch (e) {
-        console.log("לא ניתן לטעון הצעות/התקבלות");
-      }
-
-      setUser({ full_name: "משתמש", email: "" }); // TODO: לטעון מהטוקן או API
       setProfile(profileRes.data);
-      setOffers(offersRes.data || []);
-      setAcceptedMatches(acceptedRes.data || []);
     } catch (error) {
       console.error("שגיאה בטעינת הנתונים:", error);
     } finally {
@@ -69,21 +117,23 @@ export default function MyArea() {
 
   const handleAcceptOffer = async (matchId: number) => {
     try {
-      await api.post(`/matches/${matchId}/accept`);
+      console.log(`🎯 Accepting offer ${matchId}`);
+      await dispatch(updateMatchStatus({ id: matchId, status: 'accepted' }));
       toast.success("הצעה התקבלה!");
-      loadData();
     } catch (error) {
-      toast.error("שגיאה בקבלת ההצעה");
+      console.error("שגיאה בקבלת הצעה:", error);
+      toast.error("אירעה שגיאה, אנא נסה שוב");
     }
   };
 
   const handleRejectOffer = async (matchId: number) => {
     try {
-      await api.post(`/matches/${matchId}/reject`);
+      console.log(`🚫 Rejecting offer ${matchId}`);
+      await dispatch(updateMatchStatus({ id: matchId, status: 'rejected' }));
       toast.success("הצעה נדחתה");
-      loadData();
     } catch (error) {
-      toast.error("שגיאה בדחיית ההצעה");
+      console.error("שגיאה בדחיית הצעה:", error);
+      toast.error("אירעה שגיאה, אנא נסה שוב");
     }
   };
 
@@ -93,7 +143,7 @@ export default function MyArea() {
     hard: "קשה" 
   };
 
-  if (loading) return (
+  if (loading || matchesLoading) return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-100 to-cyan-200 flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
     </div>
@@ -222,7 +272,7 @@ export default function MyArea() {
           >
             <Bell className="w-4 h-4" />
             <span>הצעות</span>
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({offers.length})</span>
+            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({offersCount})</span>
           </button>
           
           <button
@@ -235,7 +285,7 @@ export default function MyArea() {
           >
             <ClipboardCheck className="w-4 h-4" />
             <span>התקבלתי</span>
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({acceptedMatches.length})</span>
+            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({acceptedCount})</span>
           </button>
           
           <button
@@ -248,7 +298,7 @@ export default function MyArea() {
           >
             <LayoutGrid className="w-4 h-4" />
             <span>הכל</span>
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({offers.length + acceptedMatches.length})</span>
+            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">({offersCount + acceptedCount})</span>
           </button>
         </motion.div>
 
@@ -273,10 +323,10 @@ export default function MyArea() {
                   <div key={offer.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 mb-1">{offer.job_title || "משרה"}</h3>
+                        <h3 className="font-semibold text-gray-800 mb-1">{offer.job?.title || "משרה"}</h3>
                         <div className="flex items-center gap-4 text-sm text-gray-500">
-                          {offer.job_payment && <span>₪{offer.job_payment}/שעה</span>}
-                          {offer.job_city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {offer.job_city}</span>}
+                          {offer.job?.payment && <span>₪{offer.job.payment}/שעה</span>}
+                          {offer.job?.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {offer.job.location}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -318,10 +368,10 @@ export default function MyArea() {
                         <CheckCircle className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800">{match.job_title || "משרה"}</h3>
+                        <h3 className="font-semibold text-gray-800">{match.job?.title || "משרה"}</h3>
                         <div className="flex items-center gap-3 text-sm text-gray-500">
-                          {match.job_payment && <span>₪{match.job_payment}/שעה</span>}
-                          {match.job_city && <span>{match.job_city}</span>}
+                          {match.job?.payment && <span>₪{match.job.payment}/שעה</span>}
+                          {match.job?.location && <span>{match.job.location}</span>}
                         </div>
                       </div>
                       <span className="text-emerald-600 font-medium">התקבלת!</span>

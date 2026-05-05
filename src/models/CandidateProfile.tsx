@@ -1,7 +1,8 @@
 // @ts-nocheck
 
 export interface CandidateProfile {
-  user_id: string;          // מזהה משתמש
+  id?: number;             // מזהה מועמד (מספרי)
+  user_id: string;          // מזהה משתמש (מחרוזת)
   city: string;             // עיר
   max_distance?: number;    // מרחק מקסימלי (ק"מ) - סימן שאלה אומר שזה רשות
   min_hourly_rate?: number; // שכר שעתי מינימלי (₪)

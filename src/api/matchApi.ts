@@ -14,10 +14,26 @@
 import { api } from "@/api/apiClient";
 
 // הגדרת המודל - תואם ל-MatchDto בסישארפ
+export interface Job {
+  id: number;
+  title: string;
+  description: string;
+  location: string;
+  payment?: number;
+  requiredDate: string;
+  isCatch: boolean;
+  isRemote: boolean;
+  isJobWithPepole: boolean;
+  categoryId: number;
+  leveJob: 'Easy' | 'Medium' | 'Hard';
+  employerId: number;
+}
+
 export interface Match {
   id?: number;
   candidateId: number;
   jobId: number;
+  job?: Job;                // פרטי המשרה המלאים
   matchScore: number;       // הציון שהאלגוריתם נתן
   matchDate?: string;
   status?: string;          // למשל: 'pending', 'approved'
@@ -26,7 +42,12 @@ export interface Match {
 export const matchApi = {
   // 1. קבלת כל ההתאמות - [HttpGet]
   getAll: async () => {
+    console.log('🌐 matchApi.getAll - Making request to /Match...');
     const response = await api.get<Match[]>("/Match");
+    console.log('🌐 matchApi.getAll - Full response:', response);
+    console.log('🌐 matchApi.getAll - Response data:', response.data);
+    console.log('🌐 matchApi.getAll - Is array?', Array.isArray(response.data));
+    console.log('🌐 matchApi.getAll - Data type:', typeof response.data);
     return response.data;
   },
 
@@ -79,6 +100,30 @@ export const matchApi = {
   // 9. מחיקת התאמה - [HttpDelete("{id}")]
   delete: async (id: number) => {
     const response = await api.delete(`/Match/${id}`);
+    return response.data;
+  },
+
+  // 10. הרצת אלגוריתם רק עבור המשתמש המחובר - [HttpPost("run-for-me")]
+  runAlgorithmForMe: async () => {
+    console.log('🚀 matchApi.runAlgorithmForMe - Running algorithm for current user...');
+    const response = await api.post<Match[]>("/Match/run-for-me");
+    console.log('🚀 matchApi.runAlgorithmForMe - Algorithm completed:', response.data);
+    return response.data;
+  },
+
+  // 11. עדכון סטטוס מאץ' - [HttpPut("{id}/status")]
+  updateStatus: async (id: number, status: string) => {
+    console.log(`🔄 matchApi.updateStatus - Updating match ${id} to status: ${status}`);
+    const response = await api.put<Match>(`/Match/${id}/status`, { status });
+    console.log('🔄 matchApi.updateStatus - Status updated:', response.data);
+    return response.data;
+  },
+
+  // 12. קבלת מועמדים שאישרו משרה - [HttpGet("job/{jobId}/accepted-candidates")]
+  getAcceptedCandidatesForJob: async (jobId: number) => {
+    console.log(`📋 matchApi.getAcceptedCandidatesForJob - Getting accepted candidates for job ${jobId}`);
+    const response = await api.get<Match[]>(`/Match/job/${jobId}/accepted-candidates`);
+    console.log('📋 matchApi.getAcceptedCandidatesForJob - Candidates:', response.data);
     return response.data;
   }
 };
