@@ -1,639 +1,285 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "@/api/apiClient";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Briefcase,
-  Users,
-  Zap,
-  Building2,
-  Eye,
-  Send,
-  User as UserIcon,
-  MapPin,
-  DollarSign,
-  
-  Sparkles,
-  LogOut,
-  Plus,
-  CheckCircle,
-  XCircle,
+  Users, Zap, Send, User as UserIcon,
+  Sparkles, LayoutDashboard, X, Check, Loader2, Mail, ExternalLink
 } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
-import { getEmployerId } from "@/lib/auth";
 import { toast } from "sonner";
 import { fetchMatches } from "@/store/matchSlice";
+import { GetMatchsByEmpID, GetMatchByJobID, GetRejecteds } from "@/api/matchApi";
+
 import type { RootState } from "@/store";
 import type { JobListing } from "@/models/JobListing";
-import type { CandidateProfile } from "@/models/CandidateProfile";
 import type { Match } from "@/models/Match";
 
-const LEVEL_LABELS = { easy: "קלה", medium: "בינונית", hard: "קשה" };
+import "./EmployerMatches.css";
 
 export default function EmployerMatches() {
-  console.log('🏢 EmployerMatches component - MOUNTED');
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { logout } = useAuth();
-  const { items: allMatches, loading: matchesLoading } = useSelector((state: RootState) => {
-    console.log('🔍 EmployerMatches - Redux State:', state);
-    console.log('🔍 EmployerMatches - Matches State:', state.matches);
-    console.log('🔍 EmployerMatches - All Matches:', state.matches.items);
-    console.log('🔍 EmployerMatches - User:', state.auth.user);
-    return state.matches;
-  });
-  const { user } = useSelector((state: RootState) => {
-    console.log('🔍 EmployerMatches - Full Auth State:', state.auth);
-    console.log('🔍 EmployerMatches - Auth User:', state.auth.user);
-    console.log('🔍 EmployerMatches - Auth Token:', state.auth.token);
-    return state.auth;
-  });
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { items: allMatches } = useSelector((state: RootState) => state.matches);
+  
+  const [activeTab, setActiveTab] = useState<'smart' | 'offers'>('smart');
   const [jobs, setJobs] = useState<JobListing[]>([]);
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
-  const [acceptedCandidates, setAcceptedCandidates] = useState<{ [jobId: number]: Match[] }>({});
-  const [activeTab, setActiveTab] = useState<"matches" | "jobs" | "offers">("matches");
-  const [loading, setLoading] = useState(true);
+  const [offers, setOffers] = useState<Match[]>([]);
+  const [isRunningAlg, setIsRunningAlg] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
 
-  // סינון התאמות לפי employerId - מסנן לפי המשרות ששייכות למעסיק
-  const matches = allMatches.filter(match => {
-    console.log('🔍 Filtering match:', match, 'against user:', user);
-    console.log('🔍 User ID:', user?.id, 'Type:', typeof user?.id);
-    
-    // בדיקה אם המשרה של המאץ' שייכת למעסיק הנוכחי
-    const job = jobs.find(j => j.id === match.jobId);
-    const isOwner = job && String(job.employerId) === String(user?.id);
-    
-    console.log('🔍 Match JobId:', match.jobId, 'Found Job:', job, 'Is Owner:', isOwner);
-    
-    return isOwner; // מציג רק מאצ'ים של המעסיק הנוכחי
-  });
-  console.log('🔍 Filtered matches for employer:', matches);
-  console.log('🔍 Total matches count:', matches.length);
+  const [algorithmResults, setAlgorithmResults] = useState<Match[]>([]);
+  const [isViewSpecific, setIsViewSpecific] = useState(false);
+  const [isFetchingSpecific, setIsFetchingSpecific] = useState(false);
 
   useEffect(() => {
-    console.log('🚀 EmployerMatches - useEffect triggered');
-    // טעינת הנתונים הנוספים (jobs, candidates) קודם
-    loadData();
-  }, [dispatch]);
-
-  // useEffect נפרד ל-fetchMatches - רץ רק אחרי שה-user נטען
-  useEffect(() => {
-    if (user && user.id) {
-      console.log('🚀 EmployerMatches - User loaded, dispatching fetchMatches...');
-      console.log('🚀 User ID:', user.id, 'Type:', typeof user.id);
-      dispatch(fetchMatches() as any);
-    } else {
-      console.log('⚠️ EmployerMatches - User not loaded yet, skipping fetchMatches');
+    if (user?.id) {
+      const userId = parseInt(user.id);
+      dispatch(fetchMatches(userId) as any);
+      loadOffers(userId);
+      fetchLatestAlgorithmResults(userId);
     }
-  }, [user, dispatch]);
+  }, [user?.id, dispatch]);
 
-  // טעינת מועמדים שאישרו כשהמשרות נטענות
-  useEffect(() => {
-    jobs.forEach(job => {
-      loadAcceptedCandidates(job.id);
-    });
-  }, [jobs]);
-
-  const loadData = async () => {
+  const fetchLatestAlgorithmResults = async (userId: number) => {
     try {
-      console.log('📊 EmployerMatches - Loading data...');
-      setLoading(true);
+      setIsFetchingSpecific(true);
+      const empRes = await api.get(`/Employer/byUser/${userId}`);
+      const results = await GetRejecteds(empRes.data.id);
       
-      // נסה לקבל employerId אבל אל תכשל אם הוא לא קיים
-      let employerId;
-      try {
-        employerId = await getEmployerId();
-        console.log('📊 EmployerMatches - EmployerId:', employerId);
-        console.log('📊 EmployerMatches - Expected UserId (from DB): 3071');
-        console.log('📊 EmployerMatches - User from Redux:', user);
-        
-        // וידוא סנכרון UserId
-        if (employerId && user?.id) {
-          console.log('📊 UserId Sync Check:', {
-            frontendUserId: user.id,
-            employerIdFromApi: employerId,
-            expectedDbUserId: 3071,
-            isSynced: String(user.id) === String(employerId)
-          });
-        }
-      } catch (err) {
-        console.warn('⚠️ Failed to get employerId:', err);
-        employerId = null;
+      if (results && results.length > 0) {
+        setAlgorithmResults(results);
+        setIsViewSpecific(true);
       }
-      
-      // טען משרות רק אם יש employerId
-      let jobsData = [];
-      if (employerId) {
-        try {
-          const jobsRes = await api.get(`/JobListing/getByEmp/${employerId}`);
-          jobsData = jobsRes.data || [];
-          console.log('✅ Jobs loaded successfully:', jobsData.length);
-        } catch (err) {
-          console.warn('⚠️ Failed to load jobs, using empty array:', err);
-          jobsData = [];
-        }
-      } else {
-        console.warn('⚠️ No employerId, skipping jobs loading');
-      }
-      
-      // טען מועמדים עם הגנה
-      let candidatesData = [];
-      try {
-        const candidatesRes = await api.get("/Candidate");
-        candidatesData = candidatesRes.data || [];
-        console.log('✅ Candidates loaded successfully:', candidatesData.length);
-      } catch (err) {
-        console.warn('⚠️ Failed to load candidates, using empty array:', err);
-        candidatesData = [];
-      }
-      
-      // עדכן את ה-state רק אם הצלחנו
-      setJobs(jobsData);
-      setCandidates(candidatesData);
-      
-      console.log('📊 Final data state:', {
-        jobsCount: jobsData.length,
-        candidatesCount: candidatesData.length,
-        hasEmployerId: !!employerId
-      });
-      
-    } catch (error) {
-      console.error("❌ Critical error in loadData:", error);
-      // ודא שהמערכים ריקים במקרה של כשלון כללי
-      setJobs([]);
-      setCandidates([]);
+    } catch (err) {
+      console.error("Error fetching specific results:", err);
     } finally {
-      setLoading(false);
+      setIsFetchingSpecific(false);
     }
   };
 
-  const findMatching = (job: JobListing) => {
-    return candidates.filter((c) => {
-      if (job.level !== c.level) return false;
-      if (!job.isRemote && c.is_remote_only) return false;
-      if (job.payment < (c.min_hourly_rate || 0)) return false;
-      const alreadyMatched = matches.some(
-        (m) => m.jobId === job.id && m.candidateId === c.id
-      );
-      return !alreadyMatched;
-    });
-  };
-
-  // פונקציה חדשה שמציגה את כל המועמדים הרלוונטיים כולל אלו שאישרו
-  const findAllRelevantCandidates = (job: JobListing) => {
-    return candidates.filter((c) => {
-      if (job.level !== c.level) return false;
-      if (!job.isRemote && c.is_remote_only) return false;
-      if (job.payment < (c.min_hourly_rate || 0)) return false;
-      return true; // מציג את כל המועמדים המתאימים, ללא סינון של מאצ'ים קיימים
-    });
-  };
-
-  // פונקציה שמקבלת את סטטוס המועמד למשרה ספציפית
-  const getCandidateStatusForJob = (candidateId: number, jobId: number) => {
-    const match = matches.find(m => m.candidateId === candidateId && m.jobId === jobId);
-    return match?.status || null;
-  };
-
-  const handleSendOffer = async (job: JobListing, candidate: CandidateProfile) => {
+  const loadJobsForSelection = async () => {
+    if (!user?.id) return;
     try {
-      await api.post("/matches/send-offer", {
-        jobId: job.id,
-        candidateId: candidate.id,
-      });
-      toast.success("ההצעה נשלחה בהצלחה! 📧");
-      dispatch(fetchMatches() as any); // רענון ההתאמות אחרי שליחה
-    } catch (error) {
-      toast.error("שליחת ההצעה נכשלה");
+      setIsLoadingJobs(true);
+      const empRes = await api.get(`/Employer/byUser/${user.id}`);
+      const employerId = empRes.data.id;
+      const res = await api.get(`/JobListing/getByEmp/${employerId}`);
+      setJobs(res.data);
+    } catch (err) {
+      toast.error("נכשל בטעינת רשימת המשרות");
+    } finally {
+      setIsLoadingJobs(false);
     }
   };
 
-  // טעינת מועמדים שאישרו משרה
-  const loadAcceptedCandidates = async (jobId: number) => {
+  const loadOffers = async (userId: number) => {
     try {
-      console.log(`📋 Loading accepted candidates for job ${jobId}`);
-      const response = await api.get<Match[]>(`/Match/job/${jobId}/accepted-candidates`);
-      const candidates = response.data;
-      setAcceptedCandidates(prev => ({
-        ...prev,
-        [jobId]: candidates
-      }));
-      console.log(`✅ Loaded ${candidates.length} accepted candidates for job ${jobId}`);
-    } catch (error) {
-      console.error(`❌ Failed to load accepted candidates for job ${jobId}:`, error);
-      setAcceptedCandidates(prev => ({
-        ...prev,
-        [jobId]: []
-      }));
+      const empRes = await api.get(`/Employer/byUser/${userId}`);
+      const data = await GetMatchsByEmpID(empRes.data.id);
+      setOffers(data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-    toast.success("יצאת בהצלחה");
+  const handleRunAlgorithm = async () => {
+    if (!user?.id || !selectedJobId) {
+      toast.error("אנא בחר משרה");
+      return;
+    }
+    
+    try {
+      setIsRunningAlg(true);
+      await GetMatchByJobID(selectedJobId); 
+      
+      const userId = parseInt(user.id);
+      await fetchLatestAlgorithmResults(userId);
+      
+      toast.success("התאמות חכמות עודכנו בהצלחה!");
+      dispatch(fetchMatches(userId) as any);
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error("שגיאה בהפעלת האלגוריתם");
+    } finally {
+      setIsRunningAlg(false);
+    }
   };
 
-  if (loading || matchesLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="w-10 h-10 border-3 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // חישוב מונים מדויקים מה-State של Redux
-  const totalMatches = jobs.reduce((acc, job) => acc + findAllRelevantCandidates(job).length, 0);
-  const openJobs = jobs.filter((j) => !j.status || j.status === "open").length;
-  const allJobs = jobs.length; // כל המשרות כולל סגורות
-  
-  console.log('📊 Job Status Analysis:');
-  console.log('📊 All jobs:', allJobs);
-  console.log('📊 Open jobs:', openJobs);
-  console.log('📊 Closed jobs:', allJobs - openJobs);
-  console.log('📊 Jobs with details:', jobs.map(j => ({ id: j.id, title: j.title, status: j.status })));
-  
-  // לוגים לאיבחון המונים
-  console.log('📊 Dashboard Statistics:');
-  console.log('📊 Total matches from Redux:', matches.length);
-  console.log('📊 Total relevant candidates:', totalMatches);
-  console.log('📊 Open jobs:', openJobs);
-  console.log('📊 Jobs:', jobs.map(j => ({ id: j.id, title: j.title, relevantCount: findAllRelevantCandidates(j).length })));
+  const displayList = isViewSpecific ? algorithmResults : allMatches;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6" dir="rtl">
-      <div className="max-w-6xl mx-auto">
-        {/* כותרת עם כפתורים */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-1">לוח ניהול</h1>
-            <p className="text-white/50">ניהול מערכת EasyJob</p>
+    <div className="matches-container">
+      <div className="matches-content-wrapper">
+        
+        <header className="matches-header">
+          <div className="header-title">
+            <h1>ניהול התאמות חכמות</h1>
           </div>
-
-          <div className="flex items-center gap-3">
-            {/* כפתור יציאה */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 px-4 py-2.5 rounded-xl font-medium transition-all"
+          <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* כפתור לוח מנהל המנווט ל- /employer/jobs כפי שמופיע ב- image_8dee9b.png */}
+            <button 
+              onClick={() => navigate('/employer/jobs')} 
+              className="btn-action"
+              style={{ 
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+              }}
             >
-              <LogOut size={18} />
-              יציאה
+              <LayoutDashboard size={18} />
+              לוח מנהל
             </button>
 
-            {/* כפתור הוספת משרה */}
-            <button
-              onClick={() => navigate("/employer/jobs")}
-              className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-cyan-500/20 transition-all"
+            <button 
+              onClick={() => {
+                setIsModalOpen(true);
+                loadJobsForSelection();
+              }} 
+              className="btn-action btn-primary"
             >
-              <Plus size={20} />
-              הוספת משרה
+              <Sparkles size={18} />
+              עדכן התאמות חכמות
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* כרטיסי סטטיסטיקה */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* התאמות */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6"
+        <nav className="matches-tabs">
+          <button 
+            onClick={() => {
+              setActiveTab('smart');
+              if (algorithmResults.length > 0) setIsViewSpecific(true);
+            }}
+            className={`tab-item ${activeTab === 'smart' ? 'active' : ''}`}
           >
-            <div className="flex items-start justify-between">
-              <div className="text-right">
-                <p className="text-white/50 text-sm mb-1">התאמות</p>
-                <p className="text-3xl font-bold text-white">{totalMatches}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* מועמדים */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="text-right">
-                <p className="text-white/50 text-sm mb-1">מועמדים</p>
-                <p className="text-3xl font-bold text-white">{candidates.length}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Users className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* משרות */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="text-right">
-                <p className="text-white/50 text-sm mb-1">משרות פעילות</p>
-                <p className="text-3xl font-bold text-white">{openJobs}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-cyan-400" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* טאבים */}
-        <div className="flex items-center gap-2 mb-6 bg-slate-800/30 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setActiveTab("matches")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "matches"
-                ? "bg-slate-700 text-white"
-                : "text-white/50 hover:text-white/70"
-            }`}
-          >
-            <Zap size={16} />
-            התאמות
+            <Zap size={16} /> התאמות חכמות
           </button>
-          <button
-            onClick={() => setActiveTab("jobs")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "jobs"
-                ? "bg-slate-700 text-white"
-                : "text-white/50 hover:text-white/70"
-            }`}
+          <button 
+            onClick={() => {
+              setActiveTab('offers');
+              setIsViewSpecific(false);
+            }}
+            className={`tab-item ${activeTab === 'offers' ? 'active' : ''}`}
           >
-            <Briefcase size={16} />
-            משרות
+            <Send size={16} /> הצעות שנשלחו לי ממועמדים
           </button>
-          <button
-            onClick={() => setActiveTab("offers")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "offers"
-                ? "bg-slate-700 text-white"
-                : "text-white/50 hover:text-white/70"
-            }`}
-          >
-            <Send size={16} />
-            הצעות
-          </button>
-        </div>
+        </nav>
 
-        {/* תוכן לפי טאב */}
-        {activeTab === "matches" && (
-          <div className="space-y-4">
-            {jobs.length === 0 ? (
-              <div className="text-center py-16 bg-slate-800/30 border border-slate-700/50 rounded-2xl">
-                <Briefcase className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <p className="text-white/50">אין משרות פתוחות להצגת התאמות</p>
-              </div>
-            ) : (
-              jobs.map((job) => {
-                const allRelevantCandidates = findAllRelevantCandidates(job);
-                return (
-                  <motion.div
-                    key={job.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden"
-                  >
-                    <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-                      <div>
-                        <h3 className="font-bold text-lg text-white">{job.title}</h3>
-                        <div className="flex gap-4 text-sm text-white/50 mt-1">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {job.location}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4" />₪
-                            {job.payment}/שעה
-                          </span>
-                        </div>
-                      </div>
-                      <span className="flex items-center gap-1.5 text-sm text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full">
-                        <Sparkles className="w-4 h-4" />
-                        {allRelevantCandidates.length} מועמדים רלוונטיים
-                      </span>
-                    </div>
+        <div className="matches-grid">
+          {activeTab === 'smart' ? (
+            <>
+              {isFetchingSpecific && (
+                <div className="col-span-full text-center py-4 text-cyan-400 flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin" size={16} />
+                  <span className="text-sm">מעדכן נתונים...</span>
+                </div>
+              )}
 
-                    <div className="divide-y divide-slate-700/50">
-                      {allRelevantCandidates.length === 0 ? (
-                        <div className="p-8 text-center text-white/40 text-sm">
-                          לא נמצאו מועמדים התואמים את דרישות המשרה
-                        </div>
-                      ) : (
-                        allRelevantCandidates.map((c) => {
-                          const candidateStatus = getCandidateStatusForJob(c.id!, job.id);
-                          return (
-                            <div
-                              key={c.id}
-                              className={`p-4 flex items-center gap-4 transition-colors group ${
-                                candidateStatus === 'accepted' 
-                                  ? 'bg-emerald-500/5 border-l-4 border-l-emerald-500' 
-                                  : candidateStatus === 'rejected'
-                                  ? 'bg-red-500/5 border-l-4 border-l-red-500'
-                                  : 'hover:bg-slate-700/30'
-                              }`}
-                            >
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                candidateStatus === 'accepted'
-                                  ? 'bg-emerald-500/20'
-                                  : candidateStatus === 'rejected'
-                                  ? 'bg-red-500/20'
-                                  : 'bg-gradient-to-br from-cyan-400/20 to-blue-500/20'
-                              }`}>
-                                {candidateStatus === 'accepted' ? (
-                                  <CheckCircle className="w-5 h-5 text-emerald-400" />
-                                ) : candidateStatus === 'rejected' ? (
-                                  <XCircle className="w-5 h-5 text-red-400" />
-                                ) : (
-                                  <UserIcon className="w-5 h-5 text-cyan-400" />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-medium text-white text-sm">
-                                  מועמד מ{c.city}
-                                </div>
-                                <div className="flex gap-3 text-xs text-white/50 mt-0.5">
-                                  <span>₪{c.min_hourly_rate}/שעה</span>
-                                  <span>רמה: {LEVEL_LABELS[c.level]}</span>
-                                  {c.is_remote_only && (
-                                    <span className="text-cyan-400/70 border border-cyan-400/30 px-1.5 rounded text-[10px]">
-                                      מרחוק בלבד
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {candidateStatus === 'accepted' && (
-                                  <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
-                                    אישר הצעה
-                                  </span>
-                                )}
-                                {candidateStatus === 'rejected' && (
-                                  <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded">
-                                    דחה הצעה
-                                  </span>
-                                )}
-                                {!candidateStatus && (
-                                  <button
-                                    onClick={() => handleSendOffer(job, c)}
-                                    className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-all"
-                                  >
-                                    <Send className="w-3.5 h-3.5" /> שלח הצעה
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {activeTab === "jobs" && (
-          <div className="space-y-4">
-            {jobs.length === 0 ? (
-              <div className="text-center py-16 bg-slate-800/30 border border-slate-700/50 rounded-2xl">
-                <Briefcase className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <p className="text-white/50 mb-4">אין משרות פתוחות</p>
-                <button
-                  onClick={() => navigate("/employer/jobs")}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2 rounded-lg text-sm"
-                >
-                  הוסף משרה חדשה
-                </button>
-              </div>
-            ) : (
-              jobs.map((job) => {
-                // ספירה ישירה מ-State של Redux - מאצ'ים בסטטוס accepted למשרה ספציפית
-                const jobAcceptedCandidates = matches.filter(m => 
-                  m.jobId === job.id && m.status === 'accepted'
-                );
-                console.log(`📊 Job ${job.id} (${job.title}):`, {
-                  acceptedCount: jobAcceptedCandidates.length,
-                  allMatches: matches.filter(m => m.jobId === job.id),
-                  acceptedMatches: jobAcceptedCandidates
-                });
-                return (
-                  <motion.div
-                    key={job.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden"
-                  >
-                    <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                          <Briefcase className="w-5 h-5 text-cyan-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-white">{job.title}</h3>
-                          <div className="flex gap-4 text-sm text-white/50 mt-1">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {job.location}
-                            </span>
-                            <span>₪{job.payment}/שעה</span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs ${
-                                job.status === "open"
-                                  ? "bg-emerald-500/20 text-emerald-400"
-                                  : "bg-slate-700 text-white/50"
-                              }`}
-                            >
-                              {job.status === "open" ? "פתוחה" : "סגורה"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+              {displayList.length > 0 ? (
+                displayList.map(match => (
+                  <div key={match.id} className="match-card p-6">
+                    <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1.5 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
-                          <Users className="w-4 h-4" />
-                          {jobAcceptedCandidates.length} מועמדים שאישרו
-                        </span>
-                        <button className="text-white/50 hover:text-white transition-colors">
-                          <Eye className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* תצוגת מועמדים שאישרו */}
-                    {jobAcceptedCandidates.length > 0 && (
-                      <div className="p-4 bg-emerald-500/5 border-t border-emerald-500/10">
-                        <div className="text-sm font-medium text-emerald-400 mb-3">מועמדים שאישרו הצעה:</div>
-                        <div className="space-y-2">
-                          {jobAcceptedCandidates.map((match) => (
-                            <div key={match.id} className="flex items-center gap-3 p-2 bg-slate-700/30 rounded-lg">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <UserIcon className="w-4 h-4 text-emerald-400" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-white">
-                                  מועמד #{match.candidateId}
-                                </div>
-                                <div className="text-xs text-white/50">
-                                  ציון התאמה: {match.matchScore} | אישר בתאריך: {new Date(match.matchDate || "").toLocaleDateString('he-IL')}
-                                </div>
-                              </div>
-                              <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
-                                אישר
-                              </span>
-                            </div>
-                          ))}
+                        <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                          <Mail className="text-cyan-400" size={20} />
+                        </div>
+                        <div className="overflow-hidden">
+                          <h3 className="font-bold text-sm truncate" title={match.candidateEmail}>
+                            {match.candidateEmail || `מועמד #${match.candidateId}`}
+                          </h3>
+                          <p className="text-xs text-white/40">משרה: #{match.jobId}</p>
                         </div>
                       </div>
-                    )}
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {activeTab === "offers" && (
-          <div className="space-y-3">
-            {matches.length === 0 ? (
-              <div className="text-center py-16 bg-slate-800/30 border border-slate-700/50 rounded-2xl">
-                <Send className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                <p className="text-white/50">לא נשלחו הצעות עדיין</p>
-              </div>
-            ) : (
-              matches.map((m) => (
-                <motion.div
-                  key={m.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-slate-700/50 bg-slate-800/30"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium text-white">התאמה #{m.id}</div>
-                    <div className="text-sm text-white/50">
-                      מועמד: {m.candidateId} | משרה: {m.jobId}
-                    </div>
-                    <div className="text-sm text-white/50">
-                      סטטוס: {m.status || 'לא ידוע'} | ציון: {m.matchScore}
+                      <div className="score-badge shrink-0">{match.matchScore}% התאמה</div>
                     </div>
                   </div>
-                </motion.div>
-              ))
-            )}
+                ))
+              ) : (
+                <div className="col-span-full text-center py-20">
+                   <p className="text-white/40">לא נמצאו התאמות.</p>
+                </div>
+              )}
+            </>
+          ) : (
+            offers.map(offer => (
+              <div key={offer.id} className="match-card p-6 border-emerald-500/20">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                      <Send className="text-emerald-400" size={18} />
+                    </div>
+                    <div className="overflow-hidden">
+                      <h3 className="font-bold text-sm truncate">
+                        {offer.candidateEmail || `מועמד #${offer.candidateId}`}
+                      </h3>
+                      <p className="text-xs text-white/40 italic">משרה #{offer.jobId}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => navigate(`/employer/candidate/${offer.candidateId}`)}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs rounded-lg transition-colors border border-emerald-500/20"
+                >
+                  <ExternalLink size={14} />
+                  צפה בפרופיל המועמד
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="job-selection-modal"
+            >
+              <div className="modal-header">
+                <h3>בחר משרה לעדכון</h3>
+                <button onClick={() => setIsModalOpen(false)}><X /></button>
+              </div>
+              <div className="job-list-container">
+                {isLoadingJobs ? <Loader2 className="animate-spin mx-auto" /> : 
+                  jobs.map(job => (
+                    <div 
+                      key={job.id} 
+                      onClick={() => setSelectedJobId(job.id)}
+                      className={`job-option ${selectedJobId === job.id ? 'selected' : ''}`}
+                    >
+                      {job.title} (ID: {job.id})
+                    </div>
+                  ))
+                }
+              </div>
+              <div className="modal-footer">
+                <button 
+                  onClick={handleRunAlgorithm} 
+                  disabled={isRunningAlg || !selectedJobId}
+                  className="run-alg-btn"
+                >
+                  {isRunningAlg ? "מעבד..." : "הפעל אלגוריתם"}
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }

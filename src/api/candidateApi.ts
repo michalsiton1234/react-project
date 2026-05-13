@@ -33,13 +33,19 @@ export const candidateAPI = {
     const res = await api.get<CandidateProfile>(`/Candidate/${id}`);
     return res.data;
   },
-
+ getByUserId: async (id: number) => {
+    const res = await api.get<CandidateProfile>(`/Candidate/byUser/${id}`);
+    return res.data;
+  },
   // 3. יצירת מועמד חדש - [HttpPost]
   create: async (data: CandidateProfile) => {
     const res = await api.post<CandidateProfile>("/Candidate", data);
     return res.data;
   },
-
+toemp: async (id: number | string) => {
+    const res = await api.get<CandidateProfile>(`/Candidate/toemp/${id}`);
+    return res.data;
+  },
   // 4. עדכון פרטי מועמד - [HttpPut("{id}")]
   update: async (id: number, data: CandidateProfile) => {
     const res = await api.put(`/Candidate/${id}`, data);

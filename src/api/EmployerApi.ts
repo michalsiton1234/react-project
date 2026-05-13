@@ -28,7 +28,10 @@ export const employerAPI = {
     const response = await api.get<Employer>(`/Employer/${id}`);
     return response.data;
   },
-
+  getByUserId: async (id: number) => {
+    const response = await api.get<Employer>(`/Employer/byUser/${id}`);
+    return response.data;
+  },
   // GET: api/Employer/{id}/jobs - הפונקציה המיוחדת שהגדרת בשרת!
   getEmployerJobs: async (id: number) => {
     const response = await api.get<JobListing[]>(`/Employer/${id}/jobs`);

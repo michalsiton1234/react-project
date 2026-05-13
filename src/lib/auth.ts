@@ -148,7 +148,14 @@ export const getUser = () => {
 
 export const getUserId = () => {
   const user = getUser();
-  return user?.nameid || user?.sub || user?.nameidentifier || null;
+  console.log('🔍 getUserId - JWT user object:', user);
+  console.log('🔍 getUserId - nameid:', user?.nameid);
+  console.log('🔍 getUserId - sub:', user?.sub);
+  console.log('🔍 getUserId - nameidentifier:', user?.nameidentifier);
+  
+  const userId = user?.nameid || user?.sub || user?.nameidentifier || null;
+  console.log('🔍 getUserId - Final userId:', userId);
+  return userId;
 };
 
 export const getUserRole = () => {
@@ -171,6 +178,15 @@ export const getUserName = () => {
 export const getEmployerId = async (): Promise<number | null> => {
   const userId = getUserId();
   if (!userId) return null;
+  
+  // Check if user is an employer by checking role
+  const userRole = getUserRole();
+  if (userRole === 'Employer') {
+    // For employers, userId is actually the employerId
+    const employerId = parseInt(userId || '0');
+    console.log('📊 getEmployerId - Using dynamic employerId from token:', employerId);
+    return employerId;
+  }
   
   try {
     const response = await fetch(`https://localhost:7198/api/Employer?userId=${userId}`);

@@ -17,7 +17,7 @@ export default function Setup() {
   const [password, setPassword] = useState("");
 
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
+  const { checkAuth, user } = useAuth();
 
   const handleSubmit = async () => {
     if (!selectedType) {
@@ -50,8 +50,9 @@ export default function Setup() {
       // יצירת פרופיל בסיסי למועמדים חדשים
       if (selectedType === "Candidate") {
         try {
+          // וידוא שכל השדות הנדרשים מאוכלסים
           const profileData = {
-            City: "", // עם אות גדולה כמו שהקונטרולר מצפה
+            City: "זמני", // ערך ברירת מחדל לשדה נדרש
             max_distance: 10,
             min_hourly_rate: 30,
             activity: true,
@@ -61,23 +62,63 @@ export default function Setup() {
             categoryId: 3 // ברירת מחדל: קטגוריה 3
           };
           
-          await api.post('/Candidate/profile', profileData);
-          console.log("DEBUG: פרופיל בסיסי נוצר בהצלחה");
-        } catch (error) {
+          // Wrap data inside candidateDto as required by backend
+          const requestData = {
+            candidateDto: profileData
+          };
+          
+          console.log("DEBUG: Sending profile data:", requestData);
+          
+          const response = await api.post('/Candidate/profile', requestData);
+          console.log("DEBUG: פרופיל בסיסי נוצר בהצלחה:", response.data);
+        } catch (error: any) {
           console.error("DEBUG: שגיאה ביצירת פרופיל בסיסי:", error);
+          console.error("DEBUG: Error response:", error.response?.data);
+          
+          // הצגת שגיאה ספציפית יותר
+          if (error.response?.status === 400) {
+            let errorMessage = "שגיאה בשמירת פרופיל";
+            if (error.response?.data?.errors) {
+              errorMessage = Object.values(error.response.data.errors).join(', ');
+            } else if (error.response?.data?.message) {
+              errorMessage = error.response.data.message;
+            }
+            toast.error(errorMessage);
+            return;
+          }
         }
       }
       
       // המתנה לקריאה ל-checkAuth כדי לוודא שהמצב מתעדכן
       setTimeout(() => {
-        checkAuth();
+        // המתן בשנית לוודא שה-state מתעדכן לפני ניווט
+        const authResult = checkAuth();
+        console.log("DEBUG: Auth check result:", authResult);
         
-        if (selectedType === "Candidate") {
-          navigate("/candidate/profile");
+        // נווט רק אם ה-auth הצליח ויש משתמש
+        if (authResult) {
+          console.log("DEBUG: Navigation successful - user authenticated");
+          if (selectedType === "Candidate") {
+            navigate("/candidate/profile");
+          } else {
+            navigate("/employer/matches"); // Fixed: employer route
+          }
         } else {
-          navigate("/employer/matches");
+          // Fallback: Check AuthContext state directly
+          console.log("DEBUG: checkAuth failed, checking AuthContext state directly...");
+          if (user && user.role) {
+            console.log("DEBUG: Fallback successful - using AuthContext state:", user);
+            if (user.role === "Candidate") {
+              navigate("/candidate/profile");
+            } else {
+              navigate("/employer/matches");
+            }
+          } else {
+            console.error("DEBUG: Auth check failed and no user in context, not navigating");
+            toast.error("שגיאה בהתחברות, נסה שוב");
+          }
         }
-      }, 100); // המתנה קצרה כדי לתת ל-AuthContext להתעדכן
+      }, 300); // Reduced timeout for faster response
       toast.success("נרשמת בהצלחה! ✨");
     } catch (error: any) {
       console.error("שגיאה ברישום:", error);

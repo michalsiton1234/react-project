@@ -1,18 +1,19 @@
+
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/api/apiClient"; // ה-Axios שלך
-import type { CandidateProfile as CandidateProfileType } from "@/models/CandidateProfile"; // המודל שבנינו
+import { api } from "@/api/apiClient";
 import { motion } from "framer-motion";
-import { MapPin, DollarSign, Zap, Globe, Users, Save, CheckCircle2, User } from "lucide-react";
+import { MapPin, DollarSign, Zap, Globe, Users, Save, CheckCircle2, User, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+
 const LEVELS = [
-  { value: "easy", label: "קלה", emoji: "😊", desc: "מתאים לכולם" },
-  { value: "medium", label: "בינונית", emoji: "💪", desc: "דורש ניסיון" },
-  { value: "hard", label: "קשה", emoji: "🔥", desc: "מקצועי" },
+  { value: "easy", label: "קלה", emoji: "😊" },
+  { value: "medium", label: "בינונית", emoji: "💪" },
+  { value: "hard", label: "קשה", emoji: "🔥" },
 ];
 
 export default function CandidateProfile() {
@@ -23,11 +24,11 @@ export default function CandidateProfile() {
   const [form, setForm] = useState({
     city: "",
     max_distance: 10,
-    min_hourly_rate: 30,
+    min_hourly_rate: 30, // שדה קיים בסטייט שלך
     activity: true,
-    level: "easy",
-    is_remote_only: false,
-    with_people: true,
+    level: "easy",       // שדה קיים בסטייט שלך
+    IsRemoteOnly: false,
+    WithPeople: true,
     categoryIds: [] as number[],
   });
   const [profileId, setProfileId] = useState<number | null>(null);
@@ -42,14 +43,9 @@ export default function CandidateProfile() {
     try {
       const res = await api.get("/Category");
       const categoryIcons: {[key: string]: string} = {
-        "ביביסיטר": "👶",
-        "משלוחים": "📦", 
-        "ניקיון": "🧹",
-        "קלדנות": "⌨️",
-        "סטודנט": "📚",
-        "מרחוק": "🏠",
-        "אחר": "✨",
-        "שירות": "🎧"
+        "ביביסיטר": "👶", "משלוחים": "📦", "ניקיון": "🧹",
+        "קלדנות": "⌨️", "סטודנט": "📚", "מרחוק": "🏠",
+        "אחר": "✨", "שירות": "🎧"
       };
       const mappedCategories = res.data.map((cat: any) => ({
         id: cat.id,
@@ -65,276 +61,92 @@ export default function CandidateProfile() {
   const loadData = async () => {
     try {
       setLoading(true);
-
-      // בדיקת הרשאה לפני קריאה ל-API
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error("אין טוקן - משתמש לא מחובר");
-        window.location.href = "/login";
+        setError("אינך מחובר. אנא התחבר למערכת.");
         return;
       }
 
-      // ניסיון לקבל פרופיל של המשתמש המחובר
       let response;
       try {
-        ///candidate/profile
-        response = await api.get('/Candidate/my-profile');  // הנתיב הנכון מהקונטרולר
+        response = await api.get('/Candidate/my-profile');
       } catch (e1) {
-        console.log("ניסיון ראשון נכשל, מנסה עם אותיות קטנות...");
         try {
-          response = await api.get('/candidate/my-profile');  // ניסיון שני - אותיות קטנות
+          response = await api.get('/candidate/my-profile');
         } catch (e2) {
-          console.log("גם ניסיון שני נכשל, הפרופיל אולי לא קיים עדיין");
-          // אם אין פרופיל, זה בסדר - ניצור אחד חדש
           response = null;
         }
       }
-      console.log("DEBUG: Response from /Candidate/my-profile:", response);
-      if (response.data) {
+
+      if (response && response.data) {
         const p = response.data;
-        console.log("Profile data received:", p);
+        debugger
         const loadedCategoryIds = p.categoryIds || p.categoryId || p.CategoryId || p.CategoryIds || [];
+        
+        // המרת רמה מ-Number ל-String בשביל ה-UI
+        const levelMap = { 0: "easy", 1: "medium", 2: "hard" };
+        const currentLevel = levelMap[p.level] || levelMap[p.Level] || "easy";
+
         setForm({
-          city: p.City || p.city || "", // תמיכה בין City ו-city
-          max_distance: p.max_distance || 10,
-          min_hourly_rate: p.min_hourly_rate || 30,
+          city: p.City || p.city || "",
+          max_distance: p.max_distance || p.MaxDistance || 10,
+          min_hourly_rate: p.minHourlyRate|| 30,
           activity: p.activity !== false,
-          level: p.level || "easy",
-          is_remote_only: p.is_remote_only || false,
-          with_people: p.with_people !== false,
+          level: currentLevel,
+          IsRemoteOnly: !!(p.IsRemoteOnly || p.isRemoteOnly),
+          WithPeople: p.WithPeople !== false,
           categoryIds: Array.isArray(loadedCategoryIds) ? loadedCategoryIds : [loadedCategoryIds]
         });
-        setProfileId(p.id); // שמירת ה-ID של הפרופיל
+        setProfileId(p.id);
       }
     } catch (error) {
       console.error("שגיאה בטעינת פרופיל:", error);
-
-      // פירוט מלא של השגיאה
-      if (error.response) {
-        console.error("שגיאת שרת:", {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          url: error.config?.url
-        });
-
-        // הודעה למשתמש לפי סוג השגיאה
-        if (error.response.status === 401) {
-          setError("פג תוקף ההתחברות. אנא התחברי מחדש.");
-          setTimeout(() => {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-          }, 2000);
-        } else if (error.response.status === 404) {
-          setError("הפרופיל לא נמצא. אנא צורי פרופיל חדש.");
-        } else if (error.response.status === 500) {
-          setError("שגיאת שרת פנימית. אנא נסו שוב מאוחר יותר.");
-        } else {
-          setError(`שגיאה: ${error.response.statusText || "שגיאה לא ידועה"}`);
-        }
-      } else if (error.request) {
-        console.error("שגיאת רשת - אין תגובה מהשרת:", error.request);
-        setError("לא ניתן להתחבר לשרת. אנא בדקו את חיבור הרשת.");
-      } else {
-        console.error("שגיאה כללית:", error.message);
-        setError("אירעה שגיאה בטעינת הפרופיל.");
-      }
+      setError("אירעה שגיאה בטעינת הפרופיל.");
     } finally {
       setLoading(false);
     }
   };
 
+ 
   const handleSave = async () => {
-    console.log("=== בדיקת תקינות עיר ===");
-    console.log("ערך עיר:", form.city);
-    console.log("אורך:", form.city?.length);
-    console.log("Trim:", form.city?.trim());
+  setSaving(true);
+  setError("");
 
-    if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
-      setError("אנא הזן שם עיר תקין (לפחות 3 תווים)");
-      return;
-    }
-    setSaving(true);
-    setError(""); // נקה את הודעת שגיאה קודמת
+  // הכנת הנתונים בפורמט שהוכחנו שעובד
+  const levelValue = form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2;
 
-    console.log("=== מתחיל שמירת פרופיל ===");
-    console.log("נתונים שנשלחים:", form);
-
-    // בדיקת תקינות הטוקן
-    const token = localStorage.getItem('token');
-    console.log("טוקן קיים:", !!token);
-    console.log("אורך טוקן:", token?.length || 0);
-
-    let saved = false;
-    let lastError = null;
-
-    // הכנת נתונים ישירות - בלי עטיפה
-    const levelValue = form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2;
-    // נשלח רק את הקטגוריה הראשונה כי הבקאנד תומך רק בקטגוריה אחת
-    const firstCategoryId = form.categoryIds?.[0];
-    
-    // בדיקה שבחרת קטגוריה
-    if (!firstCategoryId) {
-      toast.error("יש לבחור לפחות קטגוריה אחת");
-      setSaving(false);
-      return;
-    }
-    
-    const requestData = {
-      Id: 0, // יוגדר אוטומטית על ידי הקונטרולר
-      UserId: 0, // יוגדר אוטומטית על ידי הקונטרולר מהטוקן
-      CategoryId: firstCategoryId, // קטגוריה אחת בלבד - הבקאנד לא תומך במערך
-      City: form.city,
-      MaxDistance: form.max_distance,
-      MinHourlyRate: form.min_hourly_rate,
-      Activity: form.activity,
-      Level: levelValue, // שולחים כמספר 0/1/2
-      LevelValue: levelValue,
-      IsRemoteOnly: form.is_remote_only,
-      WithPeople: form.with_people
-    };
-
-    // לוגיקה משופרת: תמיד מנסה POST קודם, אם זה נכשל עם 409 (conflict) אז מעדכן
-    try {
-      console.log("מנסה ליצור/לעדכן פרופיל");
-      console.log("נתונים מעוצבים:", requestData);
-      const response = await api.post('/Candidate/profile', requestData);
-      console.log("✅ POST הצליח (יצירה או עדכון):", response.status, response.data);
-      saved = true;
-      setProfileId(response.data.id); // שמירת ה-ID מהתגובה
-    } catch (e1) {
-      console.log("❌ POST נכשל:", e1.response?.status, e1.response?.data);
-      console.log("=== פרטי השגיאה המלאים ===");
-      console.log("Status:", e1.response?.status);
-      console.log("Status Text:", e1.response?.statusText);
-      console.log("Data:", JSON.stringify(e1.response?.data, null, 2));
-      console.log("Headers:", e1.response?.headers);
-      console.log("URL:", e1.config?.url);
-
-      // אם זו שגיאת conflict (הפרופיל כבר קיים), ננסה PUT
-      if (e1.response?.status === 409 && profileId) {
-        try {
-          console.log("מנסה לעדכן פרופיל קיים, ID:", profileId);
-          const response = await api.put(`/Candidate/${profileId}`, requestData);
-          console.log("✅ PUT הצליח:", response.status, response.data);
-          saved = true;
-        } catch (e2) {
-          console.log("❌ PUT גם נכשל:", e2.response?.status, e2.response?.data);
-          lastError = e2;
-        }
-      } else {
-        lastError = e1;
-      }
-    }
-
-    if (saved) {
-      toast.success("הפרופיל נשמר!");
-      loadData();
-      // Navigate to candidate my-area page after successful save
-      setTimeout(() => {
-        navigate('/candidate/my-area');
-      }, 1500);
-    } else {
-      console.error("=== כל הניסיונות נכשלו ===");
-      console.error("שגיאה אחרונה:", lastError);
-
-      // ניסיון עם נתונים מינימליים - DTO ישיר עם הנתונים שהמשתמש הזין
-      console.log("=== מנסה עם נתונים מינימליים ===");
-
-      // בדיקת תקינות נוספת לפני יצירת ה-minimalData
-      if (!form.city || form.city.trim() === "" || form.city === "הזן את עיר המגורים שלך" || form.city === "עיר" || form.city.length < 3) {
-        console.error("עיר לא תקינה גם בניסיון מינימלי, לא ניתן להמשיך");
-        setError("עיר לא תקינה. אנא הזן שם עיר אמיתי.");
-        setSaving(false);
-        return;
-      }
-
-      const levelVal = form.level === "easy" ? 0 : form.level === "medium" ? 1 : 2;
-      const firstCatId = form.categoryIds?.[0];
-      
-      if (!firstCatId) {
-        toast.error("יש לבחור לפחות קטגוריה אחת");
-        setSaving(false);
-        return;
-      }
-      
-      const minimalData = {
-        Id: 0, // יוגדר אוטומטית
-        UserId: 0, // יוגדר אוטומטית
-        CategoryId: firstCatId, // קטגוריה אחת בלבד
-        City: form.city.trim(), // ללא fallback - חייב להיות תקין
-        MaxDistance: form.max_distance || 10,
-        MinHourlyRate: form.min_hourly_rate || 30,
-        Activity: form.activity !== false,
-        Level: levelVal, // שולחים כמספר 0/1/2
-        LevelValue: levelVal,
-        IsRemoteOnly: form.is_remote_only || false,
-        WithPeople: form.with_people !== false
-      };
-
-      // אותה לוגיקה כמו בשמירה רגילה
-      if (profileId) {
-        try {
-          console.log("מנסה לעדכן פרופיל קיים, ID:", profileId);
-          console.log("מנסה לעדכן פרופיל קיים עם נתונים מינימליים, ID:", profileId);
-          const response = await api.put(`/Candidate/${profileId}`, minimalData);
-          console.log("✅ ניסיון מינימלי PUT הצליח:", response.status);
-          toast.success("הפרופיל נשמר עם נתונים מינימליים!");
-          loadData();
-          setSaving(false);
-          setTimeout(() => {
-            navigate('/candidate/my-area');
-          }, 1500);
-          return;
-        } catch (minimalError) {
-          console.log("❌ ניסיון מינימלי PUT נכשל:", minimalError.response?.status, minimalError.response?.data);
-        }
-      } else {
-        try {
-          console.log("יוצר פרופיל חדש עם נתונים מינימליים");
-          const response = await api.post('/Candidate/profile', minimalData);
-          console.log("✅ ניסיון מינימלי POST הצליח:", response.status);
-          toast.success("הפרופיל נשמר עם נתונים מינימליים!");
-          loadData();
-          setSaving(false);
-          setTimeout(() => {
-            navigate('/candidate/my-area');
-          }, 1500);
-          return;
-        } catch (minimalError) {
-          console.log("❌ ניסיון מינימלי POST נכשל:", minimalError.response?.status, minimalError.response?.data);
-        }
-      }
-
-      // הצגת שגיאה מפורטת למשתמש
-      if (lastError?.response) {
-        const status = lastError.response.status;
-        const data = lastError.response.data;
-
-        if (status === 400) {
-          setError(`שגיאת תקינות: ${JSON.stringify(data) || "נתונים לא תקינים"}`);
-        } else if (status === 401) {
-          setError("אינך מורשית לבצע פעולה זו");
-        } else if (status === 403) {
-          setError("אין לך הרשאות לעדכן פרופיל");
-        } else if (status === 404) {
-          setError("נתיב השמירה לא נמצא");
-        } else if (status === 405) {
-          setError("שיטת HTTP לא נתמכת בשרת");
-        } else if (status === 500) {
-          setError("שגיאת שרת פנימית");
-        } else {
-          setError(`שגיאה ${status}: ${lastError.response.statusText || "שגיאה לא ידועה"}`);
-        }
-      } else {
-        setError("לא ניתן להתחבר לשרת לשמירה");
-      }
-
-      toast.error("השמירה נכשלה");
-    }
-
-    setSaving(false);
+  const data = {
+    Id: profileId,
+    City: form.city,
+    MaxDistance: Number(form.max_distance),
+    MinHourlyRate: Number(form.min_hourly_rate),
+    Activity: Boolean(form.activity),
+    Level: levelValue,
+    IsRemoteOnly: Boolean(form.IsRemoteOnly),
+    WithPeople: Boolean(form.WithPeople),
+    CategoryId: form.categoryIds[0] || 1
   };
+
+  try {
+    if (profileId) {
+      await api.put(`/Candidate/${profileId}`, data);
+    } else {
+      await api.post('/Candidate/profile', data);
+    }
+
+    toast.success("הפרופיל עודכן בהצלחה!");
+    
+    // מעבר לעמוד הבא לאחר הצלחה
+    setTimeout(() => navigate('/candidate/my-area'), 500);
+    
+  } catch (e: any) {
+    console.error("שגיאה בעדכון הפרופיל:", e);
+    setError("נכשלה שמירת הנתונים. נסה שוב מאוחר יותר.");
+    toast.error("שגיאה בשמירה");
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) {
     return (
@@ -352,237 +164,110 @@ export default function CandidateProfile() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
         className="max-w-2xl mx-auto"
       >
-        {/* Header */}
         <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-cyan-500/20"
-          >
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-cyan-500/20">
             <User className="w-10 h-10 text-white" />
-          </motion.div>
+          </div>
           <h1 className="text-3xl font-bold mb-2">פרופיל מועמד</h1>
-          <p className="text-cyan-400">נהל את הפרטים שלך כדי שנמצא לך את המשרה המושלמת</p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-red-500/10 border border-red-500/30 rounded-2xl p-4"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-                <span className="text-white text-xs">!</span>
-              </div>
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Form */}
         <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10 shadow-2xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* City */}
             <div>
               <Label className="text-cyan-400 mb-2 block">עיר</Label>
               <Input
-                type="text"
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
-                placeholder="הזן את עיר המגורים שלך"
-                className="bg-white/10 border-white/20 text-white placeholder-white/40"
+                className="bg-white/10 border-white/20 text-white"
               />
             </div>
-
-            {/* Max Distance */}
             <div>
-              <Label className="text-cyan-400 mb-2 block">מרחק מקסימלי (ק"מ)</Label>
+              <Label className="text-cyan-400 mb-2 block">מרחק חיפוש (ק"מ)</Label>
               <Input
                 type="number"
                 value={form.max_distance}
-                onChange={(e) => setForm({ ...form, max_distance: parseInt(e.target.value) || 10 })}
-                placeholder="מרחק מקסימלי"
-                className="bg-white/10 border-white/20 text-white placeholder-white/40"
+                onChange={(e) => setForm({ ...form, max_distance: e.target.value })}
+                className="bg-white/10 border-white/20 text-white"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Min Hourly Rate */}
-            <div>
-              <Label className="text-cyan-400 mb-2 block">שכר שעתי מינימלי (₪)</Label>
-              <Input
-                type="number"
-                value={form.min_hourly_rate}
-                onChange={(e) => setForm({ ...form, min_hourly_rate: parseInt(e.target.value) || 30 })}
-                placeholder="שכר שעתי מינימלי"
-                className="bg-white/10 border-white/20 text-white placeholder-white/40"
-              />
-            </div>
-
-            {/* Level */}
-            <div>
-              <Label className="text-cyan-400 mb-2 block">רמת קושי</Label>
-              <select
-                value={form.level}
-                onChange={(e) => setForm({ ...form, level: e.target.value })}
-                className="w-full bg-white/10 border-white/20 text-white rounded-lg p-3"
-              >
-                {LEVELS.map((level) => (
-                  <option key={level.value} value={level.value}>
-                    {level.emoji} {level.label} - {level.desc}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* קטגוריות תחומי עניין - מולטי סלקט */}
+          {/* שינוי 1: שכר שעתי */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <Label className="text-cyan-400">תחומי עניין</Label>
-              <span className="text-xs text-white/50">
-                נבחר {form.categoryIds?.length || 0}/3
-              </span>
+            <Label className="text-cyan-400 mb-2 block">שכר שעתי מינימלי (₪)</Label>
+            <Input
+              type="number"
+              value={form.min_hourly_rate}
+              onChange={(e) => setForm({ ...form, min_hourly_rate: e.target.value })}
+              className="bg-white/10 border-white/20 text-white"
+            />
+          </div>
+
+          {/* שינוי 2: רמת קושי */}
+          <div className="mb-6">
+            <Label className="text-cyan-400 mb-3 block">רמת קושי מועדפת</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {LEVELS.map((lvl) => (
+                <button
+                  key={lvl.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, level: lvl.value })}
+                  className={`p-3 rounded-xl border transition-all flex flex-col items-center ${
+                    form.level === lvl.value ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-white/5 border-white/10 text-gray-400'
+                  }`}
+                >
+                  <span className="text-xl">{lvl.emoji}</span>
+                  <span className="text-xs">{lvl.label}</span>
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div className="mb-6">
+            <Label className="text-cyan-400 mb-2 block">תחומי עניין</Label>
             <div className="grid grid-cols-2 gap-3">
-              {categories.map((cat) => {
-                const isSelected = form.categoryIds?.includes(cat.id) || false;
-                const canSelect = isSelected || (form.categoryIds?.length || 0) < 3;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    disabled={!canSelect}
-                    onClick={() => {
-                      const currentIds = form.categoryIds || [];
-                      if (isSelected) {
-                        // הסרת קטגוריה (לא מאפשר להסיר את האחרונה)
-                        if (currentIds.length > 1) {
-                          setForm({ ...form, categoryIds: currentIds.filter(id => id !== cat.id) });
-                        }
-                      } else {
-                        // הוספת קטגוריה
-                        setForm({ ...form, categoryIds: [...currentIds, cat.id] });
-                      }
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-right ${
-                      isSelected
-                        ? 'bg-cyan-500/20 border-cyan-400 text-white'
-                        : canSelect
-                          ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                          : 'bg-white/5 border-white/5 text-white/30 cursor-not-allowed'
-                    }`}
-                  >
-                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'border-cyan-400' : 'border-white/30'
-                    }`}>
-                      {isSelected && (
-                        <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full"></span>
-                      )}
-                    </span>
-                    <span className="text-lg">{cat.icon}</span>
-                    <span className="text-sm">{cat.name}</span>
-                  </button>
-                );
-              })}
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    const currentIds = form.categoryIds || [];
+                    const newIds = currentIds.includes(cat.id) 
+                        ? currentIds.filter(id => id !== cat.id) 
+                        : [...currentIds, cat.id];
+                    setForm({ ...form, categoryIds: newIds });
+                  }}
+                  className={`p-3 rounded-xl border text-right transition-all ${
+                    form.categoryIds.includes(cat.id) ? 'bg-cyan-500/20 border-cyan-400' : 'bg-white/5 border-white/10'
+                  }`}
+                >
+                  {cat.icon} {cat.name}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Switches */}
-          <div className="space-y-4 mb-6">
-            {/* סטטוס - שונה מפעילות */}
+          <div className="space-y-4 mb-8">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Zap className="w-5 h-5 text-cyan-400" />
-                <div>
-                  <Label className="text-white block">סטטוס</Label>
-                  <span className="text-xs text-white/50">פעיל - מחפש עבודה</span>
-                </div>
-              </div>
-              <Switch
-                checked={form.activity}
-                onCheckedChange={(checked) => setForm({ ...form, activity: checked })}
-              />
+              <Label>פעיל - מחפש עבודה</Label>
+              <Switch checked={form.activity} onCheckedChange={(v) => setForm({ ...form, activity: v })} />
             </div>
-
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-cyan-400" />
-                <Label className="text-white">עבודה מרחוק בלבד</Label>
-              </div>
-              <Switch
-                checked={form.is_remote_only}
-                onCheckedChange={(checked) => setForm({ ...form, is_remote_only: checked })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-cyan-400" />
-                <Label className="text-white">עבודה עם אנשים</Label>
-              </div>
-              <Switch
-                checked={form.with_people}
-                onCheckedChange={(checked) => setForm({ ...form, with_people: checked })}
-              />
+              <Label>עבודה מרחוק בלבד</Label>
+              <Switch checked={form.IsRemoteOnly} onCheckedChange={(v) => setForm({ ...form, IsRemoteOnly: v })} />
             </div>
           </div>
 
-          {/* Save Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-bold py-4 rounded-xl hover:from-cyan-500 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-bold py-4 rounded-xl disabled:opacity-50"
           >
-            {saving ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-                <span>שומר...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Save className="w-5 h-5" />
-                <span>שמור פרופיל</span>
-              </div>
-            )}
-          </motion.button>
+            {saving ? "שומר..." : "שמור פרופיל"}
+          </button>
         </div>
-
-        {/* Info Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-8 bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10"
-        >
-          <h3 className="text-xl font-bold mb-4 text-cyan-400">מידע נוכחי</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-cyan-400" />
-              <span className="text-white/80">עיר: {form.city || "לא הוגדר"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-cyan-400" />
-              <span className="text-white/80">שכר: ₪{form.min_hourly_rate}/שעה</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-cyan-400" />
-              <span className="text-white/80">סטטוס: {form.activity ? "פעיל" : "לא פעיל"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-cyan-400" />
-              <span className="text-white/80">עבודה מרחוק: {form.is_remote_only ? "כן" : "לא"}</span>
-            </div>
-          </div>
-        </motion.div>
       </motion.div>
     </div>
   );

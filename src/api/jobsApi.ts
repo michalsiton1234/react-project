@@ -63,5 +63,9 @@ export const jobAPI = {
     // שליחה ב-Query String כפי שמוגדר ב-C# [FromQuery]
     const response = await api.patch(`/JobListing/${id}/status?isActive=${isActive}`);
     return response.data;
+  },
+  GetTopMatchesForCandidate: async (idCandidate: number) => {
+    const response = await api.get(`/JobListing/GetTopMatches/${idCandidate}`);
+    return response.data;
   }
 };

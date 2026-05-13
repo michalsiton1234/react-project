@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { setCredentials } from '@/store/authSlice';
 import { getUserRole, getUserId } from '@/lib/auth';
 
 interface AuthContextType {
@@ -7,14 +9,15 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string) => void;
   logout: () => void;
-  checkAuth: () => void;
+  checkAuth: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch();
 
   const checkAuth = () => {
     try {
@@ -35,18 +38,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName: 'משתמש מחובר' 
           });
           console.log("AuthProvider: User set successfully:", { id: userId, role });
+          return true; // Authentication successful
         } else {
           console.warn("AuthProvider: Token exists but role is missing.");
           localStorage.removeItem('token');
           setUser(null);
+          return false; // Authentication failed
         }
       } else {
         console.log("AuthProvider: No token found in storage");
         setUser(null);
+        return false; // Authentication failed
       }
     } catch (error) {
       console.error("AuthProvider: Auth check error:", error);
       setUser(null);
+      return false; // Authentication failed
     } finally {
       setIsLoading(false);
     }
@@ -63,11 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userId = getUserId(); // שולף גם את ה-ID
     console.log("AuthProvider: Login - Role:", role, "User ID:", userId);
     
-    setUser({ 
+    const userData = { 
       id: userId,
       role, 
       fullName: 'משתמש מחובר' 
-    });
+    };
+    
+    // Sync with Redux store
+    dispatch(setCredentials({ user: userData, token }));
+    
+    setUser(userData);
     setIsLoading(false);
   };
 
@@ -75,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("AuthProvider: Logging out...");
     localStorage.removeItem('token');
     setUser(null);
-    window.location.href = '/login';
+    // לא מבצעים רדיירקט אוטומטי - מאפשרים לקומפוננטה להחליט
   };
 
   return (
